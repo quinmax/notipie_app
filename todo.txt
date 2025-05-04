@@ -1,0 +1,27 @@
+CHANNELS
+SqliteColumn(name=id, affinity=INTEGER, isNullable=true, inPrimaryKey=true)
+SqliteColumn(name=channel_id, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=channel_name, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=channel_desc, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=channel_status, affinity=INTEGER, isNullable=true, inPrimaryKey=false)
+
+NOTIFICATIONS
+SqliteColumn(name=id, affinity=INTEGER, isNullable=true, inPrimaryKey=true)
+SqliteColumn(name=sys_channel_id, affinity=INTEGER, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=sys_noti_id, affinity=INTEGER, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=title, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=message, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=msg_type, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=msg_src, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=msg_url, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=soundfile, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=active, affinity=INTEGER, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=created, affinity=INTEGER, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=expires, affinity=INTEGER, isNullable=true, inPrimaryKey=false)
+
+PROFILE
+SqliteColumn(name=id, affinity=INTEGER, isNullable=true, inPrimaryKey=true)
+SqliteColumn(name=contact_id, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=user_name, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=email_address, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+SqliteColumn(name=contact_token, affinity=TEXT, isNullable=true, inPrimaryKey=false)
