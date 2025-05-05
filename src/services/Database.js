@@ -173,7 +173,7 @@ export const checkProfileExists = async (dbInstance) => {
 export const saveProfile = async (dbInstance, profile) => {
   // Example: Simple insert. Consider adding UPDATE logic if profile can be modified.
   const insertQuery = `INSERT INTO PROFILE (user_name, email_address, contact_id, contact_token) VALUES (?, ?, ?, ?);`;
-  const params = [profile.user_name, profile.email_address, profile.contact_id, profile.contact_token];
+  const params = [profile.user_name, profile.email_address, profile.contact_id, profile.fcm_token];
   try {
     const [results] = await dbInstance.executeSql(insertQuery, params);
     console.log('Profile saved successfully, ID:', results.insertId);
@@ -183,3 +183,17 @@ export const saveProfile = async (dbInstance, profile) => {
     throw error;
   }
 };
+
+export const getProfile = async (dbInstance) => {
+  const query = "SELECT * FROM PROFILE LIMIT 1;"; // Adjust as needed
+  try {
+	const [results] = await dbInstance.executeSql(query);
+	if (results.rows.length > 0) {
+	  return results.rows.item(0); // Return the first profile found
+	}
+	return null; // No profile found
+  } catch (error) {
+	console.error('Error fetching profile:', error);
+	throw error;
+  }
+}

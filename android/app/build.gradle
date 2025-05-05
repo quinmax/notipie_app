@@ -1,4 +1,5 @@
 apply plugin: "com.android.application"
+apply plugin: 'com.google.gms.google-services'
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
@@ -58,6 +59,7 @@ react {
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
 def enableProguardInReleaseBuilds = false
+// def enableProguardInReleaseBuilds = true // Recommended for release builds
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -77,9 +79,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.notipie"
+    namespace "com.notipievoicedrop.app"
     defaultConfig {
-        applicationId "com.notipie"
+        applicationId "com.notipievoicedrop.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -110,6 +112,12 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+	// Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:33.13.0")) // Check for latest BoM version
+    // Add the dependency for the Firebase Cloud Messaging library
+    implementation("com.google.firebase:firebase-messaging")
+	implementation("com.google.firebase:firebase-analytics")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

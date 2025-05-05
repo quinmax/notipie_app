@@ -25,3 +25,5 @@ SqliteColumn(name=contact_id, affinity=TEXT, isNullable=true, inPrimaryKey=false
 SqliteColumn(name=user_name, affinity=TEXT, isNullable=true, inPrimaryKey=false)
 SqliteColumn(name=email_address, affinity=TEXT, isNullable=true, inPrimaryKey=false)
 SqliteColumn(name=contact_token, affinity=TEXT, isNullable=true, inPrimaryKey=false)
+
+Android package name: com.notipievoicedrop.app

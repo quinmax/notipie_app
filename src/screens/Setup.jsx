@@ -1,4 +1,5 @@
 import React, { useState, useEffect} from 'react';
+import { getDBConnection, saveProfile, getProfile } from '../services/Database';
 import { Alert, SafeAreaView, Text, View } from 'react-native';
 import TopNav from '../components/TopNav';
 import ms from '../styles/MainStyles';
@@ -14,8 +15,10 @@ const Setup = (props) =>
 	const [email, setEmail] = useState('');
 	// TODO: Fetch the actual FCM token asynchronously, e.g., using Firebase Cloud Messaging library
 	// For now, initializing as empty or a placeholder. The current initialization logic is likely incorrect.
-	const [fcmToken, setFcmToken] = useState(''); // Or fetch it in useEffect
-	const [btnName, setBtnName] = useState(isRegistering ? 'Register' : 'Save & Continue');
+	// const [fcmToken, setFcmToken] = useState(''); // Or fetch it in useEffect
+	// const [btnName, setBtnName] = useState(isRegistering ? 'Register' : 'Save & Continue');
+	const [fcmToken, setFcmToken] = useState('');
+	const [btnName, setBtnName] = useState(isRegistering ? 'Register' : 'Save Changes');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
@@ -23,12 +26,50 @@ const Setup = (props) =>
 			// Replace this with your actual FCM token retrieval logic
 			// import messaging from '@react-native-firebase/messaging';
 			// const token = await messaging().getToken();
-			const token = 'dummy-fcm-token-replace-me'; // Placeholder
+			const token = 'fetching...'; 
 			setFcmToken(token);
 			console.log('FCM Token:', token);
+			// In a real app, you'd fetch the live token here:
+			// try {
+			//   const liveToken = await messaging().getToken();
+			//   setFcmToken(liveToken);
+			//   console.log('Live FCM Token:', liveToken);
+			// } catch (error) {
+			//   console.error("Failed to get FCM token", error);
+			//   setFcmToken('error-fetching-token'); // Indicate error
+			// }
 		};
-		getFcmToken();
-	}, []);
+		
+		const loadProfileData = async () => {
+			if (!isRegistering) {
+				try {
+					const db = await getDBConnection();
+					const profile = await getProfile(db);
+					if (profile) {
+						setUserName(profile.user_name || '');
+						setEmail(profile.email_address || '');
+						setFcmToken(profile.contact_token || ''); // Load token from DB if available
+					} else {
+						// If not registering but no profile found, maybe treat as registration?
+						// Or show an error/alert. For now, just log.
+						console.warn("Setup opened in edit mode, but no profile found in DB.");
+						// Optionally fetch live FCM token if not found in DB
+						getFcmToken();
+					}
+				} catch (error) {
+					Alert.alert("Error", "Failed to load profile data.");
+					console.error("Error loading profile data:", error);
+					// Fetch live FCM token as a fallback
+					getFcmToken();
+				}
+			} else {
+				// If registering, always fetch the live FCM token
+				getFcmToken();
+			}
+		};
+
+		loadProfileData();
+	}, [isRegistering]);
 
 	const handleButtonPress = async () => {
 		if (!email) {
@@ -60,12 +101,32 @@ const Setup = (props) =>
 
 			const result = await response.json(); // Assuming the server responds with JSON
 			// const responseText = await response.text();
-			// console.log('Raw API Response:', responseText);
+			console.log('Raw API Response:', result);
 
 			if (result.status == "success") {
 				Alert.alert('Success', result.message || 'Registration successful!');
 				// Optionally navigate away or update UI state
 				// e.g., props.navigation.navigate('Main');
+				try {
+					const db = await getDBConnection();
+					if (!db) {
+						throw new Error("Failed to get database connection for saving profile.");
+					}
+					const profileData = {
+						contact_id: result.user_id, // Assuming API returns user_id as contact_id
+						user_name: userName,
+						email_address: email,
+						fcm_token: fcmToken // As sent to the API
+					};
+					await saveProfile(db, profileData);
+					console.log('Profile saved successfully to SQLite.');
+					Alert.alert('Success', result.message || 'Registration successful!');
+					props.navigation.replace('Main'); // Navigate to Main screen after successful registration & save
+				} catch (dbError) {
+					console.error('SQLite saving error:', dbError);
+					Alert.alert('Database Error', 'Failed to save profile locally. Please try again.');
+				}
+
 			} else {
 				Alert.alert('Registration Failed', result.message || 'An error occurred on the server.');
 			}

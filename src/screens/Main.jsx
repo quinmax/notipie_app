@@ -30,7 +30,7 @@ const Main = (props) =>
 			  }
 		  
 			  console.log('[Main.jsx] Attempting to call checkProfileExists...');
-			  const profileExists = await checkProfileExists(db); // Await the result
+			  const profileExists = await checkProfileExists(db); // Await the result...
 			  console.log('[Main.jsx] checkProfileExists returned:', profileExists);
 		  
 			  if (!profileExists) {

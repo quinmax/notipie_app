@@ -1,4 +1,4 @@
-package com.notipie
+package com.notipievoicedrop.app
 
 import android.app.Application
 import com.facebook.react.PackageList
