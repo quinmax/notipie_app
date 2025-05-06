@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, SafeAreaView, ImageBackground, StyleSheet, View } from 'react-native';
+import { updateFCMAppState } from '../services/FCMService';
+import { ActivityIndicator, SafeAreaView, ImageBackground, StyleSheet, View, Alert } from 'react-native';
 import backgroundImage from '../assets/images/home_bg.png';
 import { Text } from 'react-native-gesture-handler';
 import ButtonMain from '../components/ButtonMain';
@@ -9,7 +10,7 @@ import IconMenuChannels from '../assets/images/IconMenuChannels';
 import IconMenuSetup from '../assets/images/IconMenuSetup';
 import IconMenuAbout from '../assets/images/IconMenuAbout';
 import IconPrivacy from '../assets/images/IconPrivacy';
-import { checkProfileExists,getDBConnection } from '../services/Database';
+import { getDBConnection, checkProfileExists, getProfile } from '../services/Database';
 
 const Main = (props) => 
 {
@@ -18,33 +19,56 @@ const Main = (props) =>
 	useEffect(() => {
 		const verifyProfile = async () => {
 			try {
-			  console.log('[Main.jsx] verifyProfile started. Setting loading true.');
-			  setIsLoading(true); // Spinner starts here.
-		  
+				console.log('[Main.jsx] verifyProfile started.');
+				// setIsLoading(true); // isLoading is true by default on mount.
+				// If this effect could re-run and isLoading might be false, uncommenting this is safer.
+
 			  console.log('[Main.jsx] Attempting to get DB connection...');
 			  const db = await getDBConnection();
 			  console.log('[Main.jsx] DB connection obtained:', db ? 'OK' : 'Failed');
 		  
 			  if (!db) {
+				console.error('[Main.jsx] DB connection is null or undefined. Throwing error.');
 				  throw new Error("Failed to get database connection.");
 			  }
 		  
 			  console.log('[Main.jsx] Attempting to call checkProfileExists...');
 			  const profileExists = await checkProfileExists(db); // Await the result...
-			  console.log('[Main.jsx] checkProfileExists returned:', profileExists);
+			  console.log('[Main.jsx] checkProfileExists completed. Profile exists:', profileExists);
 		  
 			  if (!profileExists) {
 				console.log('[Main.jsx] Profile does NOT exist. Navigating to Setup...');
 				// Navigation replaces this screen, so no need to set loading false here.
+				// This component should unmount.
 				props.navigation.replace('Setup', { isRegistering: true });
+				// If execution somehow continues past replace() before unmount,
+				// and the component isn't immediately unmounted, ensure loading is false.
+				// However, this is usually not necessary with `replace`.
+				// setIsLoading(false); 
 			  } else {
-				console.log('[Main.jsx] Profile EXISTS. Setting loading false.');
+				console.log('[Main.jsx] Profile EXISTS. Attempting to fetch profile data...');
+				const profileData = await getProfile(db);
+				console.log('[Main.jsx] getProfile completed. Profile data received:', profileData ? 'Data received' : 'No data');
+				if (profileData && profileData.email_address) {
+					console.log('[Main.jsx] Profile data is valid. Updating FCM AppState.');
+					updateFCMAppState('emailAddress', profileData.email_address);
+					console.log('[Main.jsx] FCMService AppState updated with email address.');
+					if (profileData.contact_id) {
+						console.log('[Main.jsx] contact_id found. Updating FCM AppState.');
+						updateFCMAppState('contactId', profileData.contact_id);
+						console.log('[Main.jsx] FCMService AppState updated with contact_id.');
+					}
+				} else {
+					console.warn('[Main.jsx] Profile exists but fetched data is incomplete (e.g., missing email). ProfileData:', profileData);
+					// Optionally, you could navigate to Setup if profile data is incomplete
+				}
+				console.log('[Main.jsx] Profile exists branch finished. Setting loading to false.');
 				setIsLoading(false); // Spinner stops here if profile exists
 			  }
 			} catch (error) {
 			  console.error("[Main.jsx] Error verifying profile:", error);
 			  Alert.alert("Database Error", "Failed to check user profile.");
-			  console.log('[Main.jsx] Error occurred. Setting loading false.');
+			  console.log('[Main.jsx] Error occurred in verifyProfile. Setting loading to false.');
 			  setIsLoading(false); // Spinner stops here on error.
 			}
 		  };

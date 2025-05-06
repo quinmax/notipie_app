@@ -7,25 +7,102 @@ const DATABASE_NAME = 'Notipie.db';
 const DATABASE_LOCATION = 'default'; // Use 'default' for standard location
 
 let db;
+let dbInstance = null; // Renamed for clarity from 'db' to 'dbInstance' at module level
+let dbInitializationPromise = null; // To hold the promise for DB initialization
+
+// This function initializes the database tables if they don't exist.
+// It's wrapped in a Promise to allow `getDBConnection` to await its completion.
+const initDatabaseTables = (db) => { // Renamed from initDatabase to be more specific
+    return new Promise((resolve, reject) => {
+        db.transaction((tx) => {
+            console.log('[Database.js] Starting database table initialization transaction...');
+            // CHANNELS Table
+            tx.executeSql(
+                getCreateChannelsTableQuery(),
+                [],
+                () => console.log('[Database.js] Queued: Create CHANNELS table.'),
+                (txError) => { // Changed error variable name for clarity
+                    console.error("Error creating CHANNELS table transactionally", txError);
+                    reject(txError); // Important to reject the promise on error
+                    return true; // Stop the transaction
+                }
+            );
+            // NOTIFICATIONS Table
+            tx.executeSql(
+                getCreateNotificationsTableQuery(),
+                [],
+                () => console.log('[Database.js] Queued: Create NOTIFICATIONS table.'),
+                (txError) => {
+                    console.error("Error creating NOTIFICATIONS table transactionally", txError);
+                    reject(txError);
+                    return true;
+                }
+            );
+            // PROFILE Table
+            tx.executeSql(
+                getCreateProfileTableQuery(),
+                [],
+                () => console.log('[Database.js] Queued: Create PROFILE table.'),
+                (txError) => {
+                    console.error("Error creating PROFILE table transactionally", txError);
+                    reject(txError);
+                    return true;
+                }
+            );
+        }, (transactionError) => { // Transaction error callback
+            console.error("[Database.js] Transaction error during DB table initialization:", transactionError);
+            reject(transactionError);
+        }, () => { // Transaction success callback
+            console.log("[Database.js] Database table initialization transaction completed successfully.");
+            resolve(); // Resolve the promise after successful transaction
+        });
+    });
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 export const getDBConnection = async () => {
-  if (db) {
-    console.log('Returning existing DB connection');
-    return db;
-  }
-  console.log('Opening DB connection...');
-  try {
-    db = await SQLite.openDatabase({
-      name: DATABASE_NAME,
-      location: DATABASE_LOCATION,
-    });
-    console.log('Database opened successfully');
-    await initDatabase(db); // Initialize tables if they don't exist
-    return db;
-  } catch (error) {
-    console.error('Failed to open database:', error);
-    throw error; // Re-throw error to be handled by caller
-  }
+	if (dbInstance) {
+        console.log('[Database.js] Returning existing DB connection.');
+        // If we already have an instance, ensure initialization is complete
+        if (dbInitializationPromise) {
+            await dbInitializationPromise;
+        }
+        return dbInstance;
+    }
+
+    console.log('[Database.js] Opening new DB connection...');
+    try {
+        const newDbInstance = await SQLite.openDatabase({ // Use a local var first
+            name: DATABASE_NAME,
+            location: DATABASE_LOCATION,
+        });
+        console.log('[Database.js] Database opened successfully via SQLite.openDatabase.');
+        dbInstance = newDbInstance; // Assign to module-level variable
+        // Start initialization and store the promise
+        dbInitializationPromise = initDatabaseTables(dbInstance);
+        await dbInitializationPromise; // Wait for initDatabaseTables to complete
+        console.log('[Database.js] DB Table Initialization complete. Returning connection.');
+        return dbInstance;
+    } catch (error) {
+        console.error("[Database.js] Failed to get DB connection or initialize tables:", error);
+        dbInstance = null; // Reset on error
+        dbInitializationPromise = null;
+        throw error; // Re-throw to allow caller to handle
+    }
 };
 
 const getCreateChannelsTableQuery = () => {
@@ -77,42 +154,6 @@ const getCreateProfileTableQuery = () => {
 	return query;
 };
 
-// Initialize all tables within a single transaction
-const initDatabase = async (dbInstance) => 
-{
-	try 
-	{
-		console.log('Starting database initialization transaction...');
-		await dbInstance.transaction((tx) => {
-		console.log('Executing: Create CHANNELS table...');
-		tx.executeSql(getCreateChannelsTableQuery()); // Execute without await
-		console.log('Queued: Create CHANNELS table.');
-
-		console.log('Executing: Create NOTIFICATIONS table...');
-		tx.executeSql(getCreateNotificationsTableQuery()); // Execute without await
-		console.log('Queued: Create NOTIFICATIONS table.');
-
-		console.log('Executing: Create PROFILE table...');
-		tx.executeSql(getCreateProfileTableQuery()); // Execute without await
-		console.log('Queued: Create PROFILE table.');
-		}, (error) => {
-			// Transaction error callback
-			console.error('!!! Transaction execution error:', error);
-			// We throw the error here to ensure the outer catch block catches it
-			throw error;
-		}, () => {
-		// Transaction success callback
-			console.log('Transaction completed successfully.');
-		});
-    	console.log('All tables initialized successfully.');
-  	} 
-	catch (error) 
-	{
-    // Log the specific error during initialization
-		console.error('Database initialization failed:', error);
-		throw error;
-  	}
-};
 
 // Example: Function to add a channel
 export const addChannel = async (dbInstance, channel) => {
@@ -197,3 +238,27 @@ export const getProfile = async (dbInstance) => {
 	throw error;
   }
 }
+
+/**
+ * Updates the FCM token (contact_token) for a given profile.
+ * @param {SQLite.SQLiteDatabase} dbInstance - The database connection instance.
+ * @param {string} contactId - The contact_id of the profile to update.
+ * @param {string} fcmToken - The new FCM token.
+ * @returns {Promise<SQLite.ResultSet>}
+ */
+export const updateProfileFcmToken = async (dbInstance, contactId, fcmToken) => {
+  const updateQuery = `UPDATE PROFILE SET contact_token = ? WHERE contact_id = ?;`;
+  try {
+    if (!contactId) {
+      console.warn('[Database] updateProfileFcmToken: contactId is null or undefined. Skipping update.');
+      return null; // Or throw an error if contactId is strictly required
+    }
+    const [results] = await dbInstance.executeSql(updateQuery, [fcmToken, contactId]);
+    console.log(`[Database] FCM token updated for contact_id ${contactId}. Rows affected: ${results.rowsAffected}`);
+    return results;
+  } catch (error) {
+    console.error(`[Database] Error updating FCM token for contact_id ${contactId}:`, error);
+    throw error;
+  }
+};
+
