@@ -262,3 +262,47 @@ export const updateProfileFcmToken = async (dbInstance, contactId, fcmToken) => 
   }
 };
 
+// --- NOTIFICATIONS Table Functions ---
+
+/**
+ * Inserts a new notification into the NOTIFICATIONS table.
+ * @param {SQLite.SQLiteDatabase} dbInstance - The database connection instance.
+ * @param {number} sys_channel_id - The internal ID of the channel (from CHANNELS.id).
+ * @param {number} sys_noti_id - The ID of a related system notification (if any, otherwise 0 or null).
+ * @param {string} title - The notification title.
+ * @param {string} message - The notification message body.
+ * @param {string} msg_type - The message type.
+ * @param {string} msg_src - The message source ('0' for internal, '1' for remote sound).
+ * @param {string} msg_url - The URL for remote sound/content.
+ * @param {string} soundfile - The key for the sound file.
+ * @param {number} created - The creation timestamp (epoch seconds).
+ * @param {number} expires - The expiration timestamp (epoch seconds).
+ * @returns {Promise<number>} - The ID of the newly inserted notification.
+ */
+export const insertNotification = async (dbInstance, sys_channel_id, sys_noti_id, title, message, msg_type, msg_src, msg_url, soundfile, created, expires) => {
+	const insertQuery = `
+	  INSERT INTO NOTIFICATIONS (sys_channel_id, sys_noti_id, title, message, msg_type, msg_src, msg_url, soundfile, active, created, expires)
+	  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+	`;
+	// Assuming new notifications are 'active' (1) by default. Adjust if necessary.
+	const params = [sys_channel_id, sys_noti_id, title, message, msg_type, msg_src, msg_url, soundfile, 1, created, expires];
+	try {
+	  const [results] = await dbInstance.executeSql(insertQuery, params);
+	  console.log('[Database.js] Notification inserted with ID:', results.insertId);
+	  return results.insertId;
+	} catch (error) {
+	  console.error('[Database.js] Error inserting notification:', error);
+	  throw error;
+	}
+  };
+  
+  export const getChannel = async (dbInstance, fcmChannelId) => {
+	const query = "SELECT id as app_id, channel_id, channel_name as name, channel_desc as description, channel_status as status FROM CHANNELS WHERE channel_id = ? LIMIT 1;";
+	try {
+	  const [results] = await dbInstance.executeSql(query, [fcmChannelId]);
+	  return results.rows.length > 0 ? results.rows.item(0) : null;
+	} catch (error) {
+	  console.error(`[Database.js] Error fetching channel by channel_id ${fcmChannelId}:`, error);
+	  throw error;
+	}
+  };

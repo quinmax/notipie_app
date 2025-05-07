@@ -11,7 +11,6 @@ const soundAssets = {
     'sf1': require('../assets/sounds/sf1.mp3'),
     'sf2': require('../assets/sounds/sf2.mp3'),
     'sf3': require('../assets/sounds/sf3.mp3')
-    // Add other sound files here
 };
 
 // --- AppState (Datapool Equivalent) ---
@@ -173,126 +172,55 @@ const storeTokenInProfile = async (token) => {
     }
 };
 
-
-
-
-
 /**
  * Main logic for processing a received FCM message.
  */
-const processReceivedMessage = async (remoteMessage) => {
-    const data = remoteMessage.data;
-    if (!data) {
-        console.log('[FCMService] Message data is empty.');
-        return;
-    }
+const processReceivedMessage = async (remoteMessage) => 
+{
+	if (!remoteMessage || !remoteMessage.data) {
+		console.warn('[FCMService] Received message is empty or malformed:', remoteMessage);
+		return;
+	}
 
-    console.log('[FCMService] Processing message data:', data);
-    const rptLogIdForThisMessage = data.log_id || '0';
-    AppState.rptLogId = rptLogIdForThisMessage; // Set global for potential other uses
+	const db = await getDBConnection();
+	const tsNow = Math.floor(Date.now() / 1000);
+	const { channel_desc, channel_id, channel_name, created, expires, log_id, message,  msg_src, msg_url, title, type } = remoteMessage.data;
 
-    const title = data.title || 'Notification';
-    const message = data.message || 'You have a new message.';
-    const type = data.type || '1';
-    const soundFileKey = data.type ? `sf${data.type}` : 'noti_tone'; // Maps type "1" to "sf1"
-    const msgSrc = data.msg_src || '0';
-    const msgUrl = data.msg_url || '0';
-    const created = data.created || String(Math.floor(Date.now() / 1000));
-    const expires = data.expires || String(Math.floor(Date.now() / 1000) + 3600); // Default 1 hour
-    const channelId = data.channel_id || '0'; // '0' for general/no specific channel
-    const channelName = data.channel_name || '';
-    const channelDesc = data.channel_desc || '';
+	let soundFile = "";
+	if (type === '1') {
+		soundFile = "sf1";
+	} else if (type === '2') {
+		soundFile = "sf2";
+	} else if (type === '3') {
+		soundFile = "sf3";
+	}
 
-    AppState.notiPopup = 0;
+	AppState.notiPopup = 0;
 
-    const db = await getDBConnection();
-    if (!db) {
-        console.error("[FCMService] Failed to get database connection.");
-        return;
-    }
+	const channelInfo = await getChannel(db, channel_id);
+	if (!channelInfo) {
+		console.log('[FCMService] Channel not found in DB, adding new channel:', channel_id, channel_name, channel_desc);
+		await addChannel(db, channel_id, channel_name, channel_desc, '0');
+		// TODO: Handle channel creation logic, e.g., show a popup or notification to the user
+	} else {
+		console.log('[FCMService] Channel already exists in DB:', channel_id, channel_name, channel_desc);
+		AppState.channelAppId = channelInfo.app_id;
+		AppState.channelId = channelInfo.channel_id;
+		AppState.channelName = channelInfo.channel_name;
+		AppState.channelDesc = channelInfo.channel_desc;
+		AppState.channelStatus = channelInfo.status;
 
-    let channelInfo = (channelId !== '0') ? await getChannel(db, channelId) : null;
-    let currentChannelAppId = 0; // This is the internal DB ID for the channel
-    let effectiveChannelStatus = '1'; // Default to active, especially for channel_id '0'
+		// Get status of the channel
+		if (AppState.channelStatus === '0') {
+			console.log('[FCMService] Channel is inactive, not processing notification:', channel_id, channel_name, channel_desc);
+			return; // Channel is inactive, do not process the notification
+		}
+	}
 
-    if (channelInfo && channelInfo.id) { // Channel exists
-        currentChannelAppId = channelInfo.app_id; // Ensure your getChannel returns app_id
-        AppState.channelAppId = channelInfo.app_id;
-        AppState.channelId = channelInfo.id;
-        AppState.channelName = channelInfo.name;
-        AppState.channelDesc = channelInfo.description;
-        AppState.channelStatus = channelInfo.status; // '0' or '1'
-        effectiveChannelStatus = channelInfo.status;
-        console.log(`[FCMService] Channel ${channelId} exists. Status: ${effectiveChannelStatus}`);
-    } else if (channelId !== '0') { // Channel does not exist, and it's a specific new channel
-        console.log(`[FCMService] Channel ${channelId} does not exist. Adding...`);
-        const newChannelDbId = await addChannel(db, channelId, channelName, channelDesc, '0'); // Add as inactive
+    console.log('Remote message:', channel_desc, channel_id, channel_name, created, expires, log_id, message,  msg_src, msg_url, title, type);
 
-        if (newChannelDbId !== -1) {
-            currentChannelAppId = newChannelDbId;
-            AppState.channelAppId = newChannelDbId;
-            AppState.channelId = channelId;
-            AppState.channelName = channelName;
-            AppState.channelDesc = channelDesc;
-            AppState.channelStatus = '0'; // New channels are inactive
-            effectiveChannelStatus = '0';
-            console.log(`[FCMService] New channel inserted with app_id: ${newChannelDbId}. Status: ${effectiveChannelStatus}`);
 
-            // Logic for "New Channel Detected" system message (as per Java code)
-            const tsNow = Math.floor(Date.now() / 1000);
-            const sysSoundFileKey = 'sf1'; // System sound for new channel
-            const sysTitle = 'New Channel Detected';
-            const sysMessage = `${channelName} would like to send you notifications. Please visit the Channels page to manage your preferences.`;
-
-            // Insert the original notification first, linked to the new channel
-            const originalNotiId = await insertNotification(db, currentChannelAppId, 0, title, message, type, msgSrc, msgUrl, soundFileKey, parseInt(created), parseInt(expires));
-            console.log(`[FCMService] Original notification for new channel inserted with ID: ${originalNotiId}`);
-
-            // Handle the "system notification" for the new channel (plays sound, adds to DB)
-            // This system message is linked to the original notification that triggered its creation.
-            await handleNotificationSoundAndStorage(db, currentChannelAppId, originalNotiId, sysSoundFileKey, '1', sysTitle, sysMessage, "0", "0", String(tsNow), String(tsNow + 3600), rptLogIdForThisMessage, true);
-
-            // The UI should guide the user to activate the channel.
-            // For now, the channel is added but remains inactive for subsequent messages until user changes it.
-        } else {
-            console.error("[FCMService] Failed to insert new channel. Original notification not processed further.");
-            return; // Stop if channel can't be added
-        }
-    }
-    // If channelId is '0', effectiveChannelStatus remains '1' (default active)
-
-    console.log(`[FCMService] Effective status for channel ${channelId}: ${effectiveChannelStatus}`);
-
-    // If channel is inactive (and not the special channel '0'), store notification silently and return
-    if (effectiveChannelStatus === '0' && channelId !== '0') {
-        console.log(`[FCMService] Channel ${channelName} (${channelId}) is inactive. Storing notification silently.`);
-        // Ensure notification is stored even if channel is inactive (if not already stored during new channel creation)
-        // The new channel logic above already stores the original notification.
-        // If it's an existing inactive channel, we might want to store it here.
-        if (!channelInfo) { // If it wasn't a new channel scenario, store it now.
-             await insertNotification(db, currentChannelAppId, 0, title, message, type, msgSrc, msgUrl, soundFileKey, parseInt(created), parseInt(expires));
-        }
-        DeviceEventEmitter.emit('notificationsUpdated'); // Notify UI to refresh list
-        return;
-    }
-
-    // If channel is active (or channelId '0', or it was a system message for a new channel)
-    AppState.msgTitle = title;
-    AppState.msgBody = message;
-
-    // The system message for a new channel already had its sound played by the call above.
-    // So, only play sound for the original message if it wasn't part of new channel creation's system message.
-    // The `isSystemMessage` flag in `handleNotificationSoundAndStorage` helps distinguish.
-    // If it's not a new channel, or if it is but this is the primary notification processing.
-    if (!(channelId !== '0' && !channelInfo)) { // Not a new channel being added right now (that case handled above)
-        await handleNotificationSoundAndStorage(db, currentChannelAppId, 0, soundFileKey, type, title, message, msgSrc, msgUrl, created, expires, rptLogIdForThisMessage, false);
-    }
-
-    if (remoteMessage.notification) {
-        console.log('[FCMService] Message also contained a notification payload:', remoteMessage.notification);
-        // This is usually handled by the system if app is in background/quit.
-        // If in foreground, you might choose to display it as a local notification.
-    }
+	await handleNotificationSoundAndStorage(db, currentChannelAppId, originalNotiId, sysSoundFileKey, '1', sysTitle, sysMessage, "0", "0", String(tsNow), String(tsNow + 3600), rptLogIdForThisMessage, true);
 };
 
 /**
