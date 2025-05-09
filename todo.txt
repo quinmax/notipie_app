@@ -27,3 +27,22 @@ SqliteColumn(name=email_address, affinity=TEXT, isNullable=true, inPrimaryKey=fa
 SqliteColumn(name=contact_token, affinity=TEXT, isNullable=true, inPrimaryKey=false)
 
 Android package name: com.notipievoicedrop.app
+
+
+import appStateManager from './AppStateManager';
+
+const processReceivedMessage = async (remoteMessage) => {
+  if (remoteMessage.data) {
+    const { channel_id, title, message } = remoteMessage.data;
+
+    // Store data in the singleton
+    appStateManager.set('channelId', channel_id);
+    appStateManager.set('notificationTitle', title);
+    appStateManager.set('notificationMessage', message);
+
+    console.log('[FCMService] Data stored in AppStateManager:', appStateManager.getAll());
+  }
+};
+
+WHEN THE APP IS IN THE FOREGROUND A NOTI WONT SHOW (ONLY WHEN APP IS IN BACKGROUND WILL IT BEHAVE LIKE A NORMAL NOTI)
+You can use : npm install react-native-push-notification to show when app is in foreground.

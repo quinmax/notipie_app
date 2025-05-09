@@ -14,7 +14,7 @@ import { getDBConnection, checkProfileExists, getProfile } from '../services/Dat
 
 const Main = (props) => 
 {
-	const [isLoading, setIsLoading] = useState(true);
+	const [isLoading, setIsLoading] = useState(false);
 
 	useEffect(() => {
 		const verifyProfile = async () => {
@@ -44,7 +44,7 @@ const Main = (props) =>
 				// If execution somehow continues past replace() before unmount,
 				// and the component isn't immediately unmounted, ensure loading is false.
 				// However, this is usually not necessary with `replace`.
-				// setIsLoading(false); 
+				// setIsLoading(false); zzz
 			  } else {
 				console.log('[Main.jsx] Profile EXISTS. Attempting to fetch profile data...');
 				const profileData = await getProfile(db);
@@ -69,11 +69,11 @@ const Main = (props) =>
 			  console.error("[Main.jsx] Error verifying profile:", error);
 			  Alert.alert("Database Error", "Failed to check user profile.");
 			  console.log('[Main.jsx] Error occurred in verifyProfile. Setting loading to false.');
-			  setIsLoading(false); // Spinner stops here on error.
+			  setIsLoading(false); // Spinner stops here on error..
 			}
 		  };
 
-		verifyProfile();
+		//verifyProfile();
 	}, [props.navigation]);
 
 
