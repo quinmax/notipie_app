@@ -46,3 +46,13 @@ const processReceivedMessage = async (remoteMessage) => {
 
 WHEN THE APP IS IN THE FOREGROUND A NOTI WONT SHOW (ONLY WHEN APP IS IN BACKGROUND WILL IT BEHAVE LIKE A NORMAL NOTI)
 You can use : npm install react-native-push-notification to show when app is in foreground.
+
+SOUND FILE LOCATIONS:
+2. Check Asset Location
+Ensure that your internal sound files are located in the correct directory and are accessible.
+
+For Android
+Place your sound files in the android/app/src/main/res/raw directory. If the raw folder does not exist, create it.
+
+For iOS
+Add your sound files to the Xcode project under the Resources folder.

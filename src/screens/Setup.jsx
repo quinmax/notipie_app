@@ -1,4 +1,5 @@
 import React, { useState, useEffect} from 'react';
+import appStateManager from '../services/AppStateManager';
 import { getDBConnection, saveProfile, getProfile } from '../services/Database';
 import { Alert, SafeAreaView, Text, View } from 'react-native';
 import TopNav from '../components/TopNav';
@@ -14,30 +15,15 @@ const Setup = (props) =>
 	const [userName, setUserName] = useState('');
 	const [email, setEmail] = useState('');
 	// TODO: Fetch the actual FCM token asynchronously, e.g., using Firebase Cloud Messaging library
-	// For now, initializing as empty or a placeholder. The current initialization logic is likely incorrect.
-	// const [fcmToken, setFcmToken] = useState(''); // Or fetch it in useEffect
-	// const [btnName, setBtnName] = useState(isRegistering ? 'Register' : 'Save & Continue');
 	const [fcmToken, setFcmToken] = useState('');
 	const [btnName, setBtnName] = useState(isRegistering ? 'Register' : 'Save Changes');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
-		const getFcmToken = async () => {
-			// Replace this with your actual FCM token retrieval logic
-			// import messaging from '@react-native-firebase/messaging';
-			// const token = await messaging().getToken();
-			const token = 'fetching...'; 
-			setFcmToken(token);
-			console.log('FCM Token:', token);
-			// In a real app, you'd fetch the live token here:
-			// try {
-			//   const liveToken = await messaging().getToken();
-			//   setFcmToken(liveToken);
-			//   console.log('Live FCM Token:', liveToken);
-			// } catch (error) {
-			//   console.error("Failed to get FCM token", error);
-			//   setFcmToken('error-fetching-token'); // Indicate error
-			// }
+		const retrieveFcmToken = () => {
+			const tokenFromManager = appStateManager.get('fcmToken');
+			setFcmToken(tokenFromManager || 'fetching...'); // Set to 'fetching...' or empty if not yet available
+			console.log('[Setup.jsx] FCM Token from AppStateManager:', tokenFromManager);
 		};
 		
 		const loadProfileData = async () => {
@@ -48,23 +34,22 @@ const Setup = (props) =>
 					if (profile) {
 						setUserName(profile.user_name || '');
 						setEmail(profile.email_address || '');
-						setFcmToken(profile.contact_token || ''); // Load token from DB if available
+						// Prefer token from AppStateManager if available, otherwise from DB, then fetch
+						setFcmToken(appStateManager.get('fcmToken') || profile.contact_token || 'fetching...');
 					} else {
 						// If not registering but no profile found, maybe treat as registration?
 						// Or show an error/alert. For now, just log.
 						console.warn("Setup opened in edit mode, but no profile found in DB.");
-						// Optionally fetch live FCM token if not found in DB
-						getFcmToken();
+						retrieveFcmToken();
 					}
 				} catch (error) {
 					Alert.alert("Error", "Failed to load profile data.");
 					console.error("Error loading profile data:", error);
-					// Fetch live FCM token as a fallback
-					getFcmToken();
+					retrieveFcmToken();
 				}
 			} else {
-				// If registering, always fetch the live FCM token
-				getFcmToken();
+				// If registering, get the token from AppStateManager
+				retrieveFcmToken();
 			}
 		};
 
@@ -76,10 +61,10 @@ const Setup = (props) =>
 			Alert.alert('Validation Error', 'Email address is required.');
 			return;
 		}
-		if (!fcmToken) {
-			Alert.alert('Error', 'FCM Token is not available yet. Please wait or restart the app.');
-			return;
-		}
+		if (!fcmToken || fcmToken === 'fetching...') {
+ 			Alert.alert('Error', 'FCM Token is not available yet. Please wait or restart the app.');
+ 			return;
+ 		}
 
 		setIsSubmitting(true);
 		const formData = new FormData();

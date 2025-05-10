@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import base64 from 'base-64';
 import RNFS from 'react-native-fs';
 import { View, TextInput, Button, StyleSheet, Alert } from 'react-native';
-import Sound from 'react-native-sound';
 
 const Test = () => 
 {

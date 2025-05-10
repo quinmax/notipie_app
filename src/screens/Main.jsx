@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import appStateManager from '../services/AppStateManager';
 import { updateFCMAppState } from '../services/FCMService';
 import { ActivityIndicator, SafeAreaView, ImageBackground, StyleSheet, View, Alert } from 'react-native';
 import backgroundImage from '../assets/images/home_bg.png';
@@ -14,7 +15,7 @@ import { getDBConnection, checkProfileExists, getProfile } from '../services/Dat
 
 const Main = (props) => 
 {
-	const [isLoading, setIsLoading] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
 		const verifyProfile = async () => {
@@ -51,11 +52,13 @@ const Main = (props) =>
 				console.log('[Main.jsx] getProfile completed. Profile data received:', profileData ? 'Data received' : 'No data');
 				if (profileData && profileData.email_address) {
 					console.log('[Main.jsx] Profile data is valid. Updating FCM AppState.');
-					updateFCMAppState('emailAddress', profileData.email_address);
+					appStateManager.set('emailAddress', profileData.email_address);
+					// updateFCMAppState('emailAddress', profileData.email_address);
 					console.log('[Main.jsx] FCMService AppState updated with email address.');
 					if (profileData.contact_id) {
 						console.log('[Main.jsx] contact_id found. Updating FCM AppState.');
-						updateFCMAppState('contactId', profileData.contact_id);
+						// updateFCMAppState('contactId', profileData.contact_id);
+						appStateManager.set('contactId', profileData.contact_id);
 						console.log('[Main.jsx] FCMService AppState updated with contact_id.');
 					}
 				} else {
@@ -64,7 +67,7 @@ const Main = (props) =>
 				}
 				console.log('[Main.jsx] Profile exists branch finished. Setting loading to false.');
 				setIsLoading(false); // Spinner stops here if profile exists
-			  }
+			  }/**/
 			} catch (error) {
 			  console.error("[Main.jsx] Error verifying profile:", error);
 			  Alert.alert("Database Error", "Failed to check user profile.");
@@ -73,7 +76,7 @@ const Main = (props) =>
 			}
 		  };
 
-		//verifyProfile();
+		verifyProfile();
 	}, [props.navigation]);
 
 
