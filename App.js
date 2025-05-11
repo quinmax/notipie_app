@@ -35,6 +35,18 @@ const App = () =>
     };
   }, []);
 
+  useEffect(() => {
+    const handleNavigateToNotifications = (data) => {
+      navigationRef.current?.navigate('Notifications', { notificationId: data.notificationId });
+    };
+
+    eventEmitter.on('navigateToNotifications', handleNavigateToNotifications);
+
+    return () => {
+      eventEmitter.off('navigateToNotifications', handleNavigateToNotifications);
+    };
+  }, []);
+
   return (
     <NavigationContainer ref={navigationRef}>
       <AppNavigator />

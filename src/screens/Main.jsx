@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import appStateManager from '../services/AppStateManager';
 import { updateFCMAppState } from '../services/FCMService';
-import { ActivityIndicator, SafeAreaView, ImageBackground, StyleSheet, View, Alert } from 'react-native';
+import { ActivityIndicator, SafeAreaView, ImageBackground, StyleSheet, Pressable, View, Alert } from 'react-native';
 import backgroundImage from '../assets/images/home_bg.png';
 import { Text } from 'react-native-gesture-handler';
 import ButtonMain from '../components/ButtonMain';
@@ -16,6 +16,7 @@ import { getDBConnection, checkProfileExists, getProfile } from '../services/Dat
 const Main = (props) => 
 {
 	const [isLoading, setIsLoading] = useState(true);
+	const [muteMode, setMuteMode] = useState(appStateManager.get('muteMode'));
 
 	useEffect(() => {
 		const verifyProfile = async () => {
@@ -79,6 +80,19 @@ const Main = (props) =>
 		verifyProfile();
 	}, [props.navigation]);
 
+	useEffect(() => {
+    const handleStateChange = ({ key, value }) => {
+      if (key === 'muteMode') {
+        setMuteMode(value); // Update local state when muteMode changes
+      }
+    };
+
+    appStateManager.on('stateChange', handleStateChange);
+
+    return () => {
+      appStateManager.off('stateChange', handleStateChange); // Cleanup listener
+    };
+  }, []);
 
 	const handleGotoNotifications = () => {
 		props.navigation.navigate('Notifications')
@@ -119,6 +133,12 @@ const Main = (props) =>
 					<IconPrivacy />
 					<Text style={{ fontSize: 12, color: '#fff', marginLeft: 5 }}>Privacy Policy</Text>
 				</View>
+				<Pressable onPress={() => props.navigation.navigate('Channels')} style={{ marginTop: 5 }}>
+					<View style={{ flexDirection: 'column', justifyContent: 'center', alignItems: 'center', marginTop: 45 }}>
+						<Text style={{ color: '#fff' }}>Meeting Mode:</Text>
+						<Text style={{ color: muteMode ? '#03A9F4' : '#03A9F4' }}>{muteMode ? 'ON' : 'OFF'}</Text>
+					</View>
+				</Pressable>
 			</View>
 		</ImageBackground>
 	</SafeAreaView>

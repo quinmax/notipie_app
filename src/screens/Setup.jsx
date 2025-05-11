@@ -145,10 +145,9 @@ const Setup = (props) =>
 					secureTextEntry={false}
 				/>
 				<Label description='Support Reference' />
-				<Text style={ [ms.cbase, ms.mt5 ]}>{fcmToken}</Text>
+				<Text style={ [ms.cbase, ms.mt5 ]}>{fcmToken ? '...' + fcmToken.slice(-20) : ''}</Text>
 			</View>
 			<View style={{ paddingStart: 20, paddingEnd: 20 }}>
-				{/* <ButtonMain text={btnName} SvgIcon={IconSave} svgWidth={24} svgHeight={24} style={{ marginTop: 20, backgroundColor: '#03A9F4', justifyContent: 'center' }} textStyle={{ color: '#000', fontSize: 15 }} onPress={handleButtonPress} /> */}
 				<ButtonMain
 					text={isSubmitting ? 'Registering...' : btnName}
 					SvgIcon={IconSave}

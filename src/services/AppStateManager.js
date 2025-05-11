@@ -1,27 +1,22 @@
-class AppStateManager {
-  static instance = null;
+import { EventEmitter } from 'events';
 
+class AppStateManager extends EventEmitter {
   constructor() {
-    if (!AppStateManager.instance) {
-      this.state = {};
-      AppStateManager.instance = this;
-    }
-    return AppStateManager.instance;
-  }
-
-  set(key, value) {
-    this.state[key] = value;
+    super();
+    this.state = {
+      muteMode: false, // Default value
+    };
   }
 
   get(key) {
     return this.state[key];
   }
 
-  getAll() {
-    return this.state;
+  set(key, value) {
+    this.state[key] = value;
+    this.emit('stateChange', { key, value }); // Notify listeners of the change
   }
 }
 
 const appStateManager = new AppStateManager();
-Object.freeze(appStateManager); // Prevent modifications to the singleton instance
 export default appStateManager;

@@ -87,7 +87,8 @@ const getCreateNotificationsTableQuery = () => `
     soundfile TEXT,
     active INTEGER,
     created INTEGER,
-    expires INTEGER
+    expires INTEGER,
+	keep INTEGER DEFAULT 0
   );
 `;
 
@@ -169,6 +170,25 @@ export const getChannel = async (db, channel_id) => {
   }
 };
 
+// Get all channels order by channel_name
+export const getAllChannels = async (db) => {
+	const query = `
+		SELECT id, channel_id, channel_name, channel_desc, channel_status
+		FROM CHANNELS
+		ORDER BY channel_name;
+	`;
+	try {
+		const [results] = await db.executeSql(query);
+		const channels = [];
+		for (let i = 0; i < results.rows.length; i++) {
+			channels.push(results.rows.item(i));
+		}
+		return channels;
+	} catch (error) {
+		console.error('[Database.js] Error fetching all channels:', error);
+		throw error;
+	}
+};
 // --- PROFILE Table Functions ---
 
 /**
@@ -262,6 +282,71 @@ export const insertNotification = async (db, notification) => {
   }
 };
 
+/**
+ * Fetches all active notifications and deletes expired ones.
+ * @param {SQLite.SQLiteDatabase} db - The database connection instance.
+ * @returns {Promise<object[]>} - An array of active notification records.
+ */
+export const fetchActiveNotifications = async (db) => {
+  const currentTimestamp = Math.floor(Date.now() / 1000); // Get current timestamp in seconds
+  const fetchQuery = `
+    SELECT * 
+    FROM NOTIFICATIONS
+    WHERE expires >= ? ORDER BY active DESC, created DESC;
+  `;
+  const deleteQuery = `
+    DELETE FROM NOTIFICATIONS
+    WHERE expires < ? AND keep = 0;
+  `;
+
+  try {
+    // Delete expired notifications
+    await db.executeSql(deleteQuery, [currentTimestamp]);
+    console.log('[Database.js] Expired notifications deleted.');
+
+    // Fetch active notifications
+    const [results] = await db.executeSql(fetchQuery, [currentTimestamp]);
+    const notifications = [];
+    for (let i = 0; i < results.rows.length; i++) {
+      notifications.push(results.rows.item(i));
+    }
+    console.log('[Database.js] Active notifications fetched:', notifications);
+    return notifications;
+  } catch (error) {
+    console.error('[Database.js] Error fetching active notifications:', error);
+    throw error;
+  }
+};
+
+// Set a notification as read by changing acive to 0
+export const setNotificationAsRead = async (db, notificationId) => {
+  const query = `
+	UPDATE NOTIFICATIONS
+	SET active = 0
+	WHERE id = ?;
+  `;
+  try {
+	await db.executeSql(query, [notificationId]);
+	console.log(`[Database.js] Notification ${notificationId} marked as read.`);
+  } catch (error) {
+	console.error('[Database.js] Error marking notification as read:', error);
+	throw error;
+  }
+};
+
+export const getNotificationById = async (db, id) => {
+  const query = 'SELECT * FROM NOTIFICATIONS WHERE id = ?;';
+  try {
+    const [results] = await db.executeSql(query, [id]);
+    if (results.rows.length > 0) {
+      return results.rows.item(0); // Return the first matching notification
+    }
+    return null;
+  } catch (error) {
+    console.error('[Database.js] Error fetching notification by ID:', error);
+    throw error;
+  }
+};
 
 
 

@@ -56,3 +56,7 @@ Place your sound files in the android/app/src/main/res/raw directory. If the raw
 
 For iOS
 Add your sound files to the Xcode project under the Resources folder.
+
+TODO 11052025
+1. When a noti arrives we need to show IT
+2. Ask to add channel etc

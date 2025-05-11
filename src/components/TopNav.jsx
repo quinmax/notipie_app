@@ -1,4 +1,5 @@
 import React from 'react';
+import appStateManager from '../services/AppStateManager';
 import { View, Text, Image, TouchableOpacity, StyleSheet, StatusBar, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native'; // Import hook
 import PageIconNoti from '../assets/images/PageIconNoti';
@@ -6,23 +7,15 @@ import PageIconChannels from '../assets/images/PageIconChannels';
 import PageIconSetup from '../assets/images/PageIconSetup';
 import PageIconAbout from '../assets/images/PageIconAbout';
 import IconBack from '../assets/images/IconBack';
+import Mutemode from '../assets/images/MuteMode';
 
-/**
- * A reusable page header component.
- *
- * @param {object} props - Component props.
- * @param {string} props.title - The title text to display in the header.
- * @param {import('react-native').ImageSourcePropType} props.leftImageSource - Source for the left image (e.g., require('../assets/logo.png')).
- * @param {import('react-native').ImageSourcePropType} props.rightImageSource - Source for the right image (e.g., require('../assets/home_icon.png')).
- * @param {string} [props.backTarget='Main'] - The name of the screen route to navigate to when the right image is pressed. Defaults to 'Main'.
- * @param {object} [props.style] - Optional additional styles for the header container.
- * @param {object} [props.titleStyle] - Optional additional styles for the title text.
- * @param {object} [props.leftImageStyle] - Optional additional styles for the left image.
- * @param {object} [props.rightImageStyle] - Optional additional styles for the right image.
- */
 const TopNav = ({ title }) => 
 {
 	const navigation = useNavigation();
+
+	const muteMode = appStateManager.get('muteMode') || false;
+	// const [muteMode, setMuteMode] = React.useState(appStateManager.get('muteMode'));
+	console.log('[TopNav.jsx] muteMode:', muteMode);
 
 	const renderLeftIcon = () => {
 		switch (title) {
@@ -56,6 +49,10 @@ const TopNav = ({ title }) =>
 				<Text style={[styles.title]} numberOfLines={1} ellipsizeMode="tail">
 					{title}
 				</Text>
+
+				<View style={{ marginEnd: 10 }} > 
+				{muteMode && <Mutemode/>}
+				</View>
 
 				{/* Right Image (Button) */}
 				<TouchableOpacity onPress={handleBackPress} activeOpacity={0.7}>

@@ -13,14 +13,12 @@ export const initializeFCM = async () => {
     const messaging = getMessaging();
     console.log('[FCMService] Messaging instance obtained.');
 
-  // Request permissions for iOS
-//   if (Platform.OS === 'ios') {
-//     const authStatus = await messaging.requestPermission();
-//     const enabled =
-//       authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-//       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-//     if (enabled) console.log('[FCMService] iOS Authorization status:', authStatus);
-//   }
+    // Set mutemode to off
+	if (appStateManager.get('muteMode') === undefined) {
+		appStateManager.set('muteMode', false);
+		console.log('[FCMService] muteMode was not set. Defaulting to false.');
+	}
+	console.log('[FCMService] Mutemode set to 0.');
 
  // Request permissions for iOS
     if (Platform.OS === 'ios') {
@@ -94,7 +92,7 @@ export const processReceivedMessage = async (remoteMessage) => {
 	const expires = remoteMessage.data.expires || '0';
 	const logId = remoteMessage.data.log_id || '0';
 	const message = remoteMessage.data.message || 'No message';
-	const msSrc = remoteMessage.data.ms_src || '0';
+	const msSrc = remoteMessage.data.msg_src || '0';
 	const msgUrl = remoteMessage.data.msg_url || '';
 	const title = remoteMessage.data.title || 'No title';
 	const type = remoteMessage.data.type || '0';
@@ -159,7 +157,7 @@ export const processReceivedMessage = async (remoteMessage) => {
 
 		const getChannelStatus = appStateManager.get('channelStatus');
 
-		if (getChannelStatus === '0') 
+		if (getChannelStatus === '0' || appStateManager.get('muteMode') === true)
 		{
 			console.log('[FCMService] Channel is disabled. Not showing notification.');
 			return;
@@ -224,29 +222,39 @@ const handleNotification = async (noti) =>
 	const db = await getDBConnection();
 
 	// Insert the notification into the database
-	const notificationId = await insertNotification(db, newNotification);
-	console.log(`[FCMService] Notification "${notificationId}" added successfully.`);
+	console.log('[FCMService] ZZZZ Inserting notification into database:', newNotification);
 
-	// Set appmanager gotMail to 1 and add noti id
-	appStateManager.set('gotMail', '1');
-	appStateManager.set('newNotiId', notificationId);
+	if (title != 'No title' && createdInt != '0' && expiresInt != '0') 
+	{
+		const notificationId = await insertNotification(db, newNotification);
+		console.log(`[FCMService] Notification "${notificationId}" added successfully.`);
+		// Set appmanager gotMail to 1 and add noti id
+		appStateManager.set('gotMail', '1');
+		appStateManager.set('newNotiId', notificationId);
 
-	// At this point we probably need to use the emmiter to show the noti in the foreground
-	// eventEmitter.emit('notificationsUpdated', {
-	// 	title: title,
-	// 	message: message,
-	// 	soundFile: soundFile,
-	// });
+		// At this point we probably need to use the emmiter to show the noti in the foreground
+		// eventEmitter.emit('notificationsUpdated', {
+		// 	title: title,
+		// 	message: message,
+		// 	soundFile: soundFile,
+		// });
+		eventEmitter.emit('navigateToNotifications', {
+		notificationId: notificationId,
+		});
 
-	// Set the device volume to 100%
-	const maxVolume = await SystemSetting.getVolume('music');
-	SystemSetting.setVolume(1.0, { type: 'music', showUI: true }); // Set volume to 100% and show UI
-	console.log('Volume set to maximum.');
 
-	console.log('[FCMService] Playing internal sound:', msgUrl);
-	try {
-	SoundQueueManager.addToQueue('1', msgUrl, ''); // External sound
-	} catch (error) {
-		console.error('Error playing external sound:', error);
+		// Set the device volume to 100%
+		// QQQ Testing const maxVolume = await SystemSetting.getVolume('music');
+		// QQQ Testing SystemSetting.setVolume(1.0, { type: 'music', showUI: true }); // Set volume to 100% and show UI
+		console.log('Volume set to maximum.');
+
+		console.log('[FCMService] Playing internal sound:', msgUrl);
+		try {
+		SoundQueueManager.addToQueue('1', msgUrl, ''); // External sound
+		} catch (error) {
+			console.error('Error playing external sound:', error);
+		}
+
 	}
+	
 };
