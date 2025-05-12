@@ -20,32 +20,35 @@ const App = () =>
       isFCMInitialized.current = true; // Mark FCM as initialized
     }
 
-    // Listen for notificationsUpdated event
-    const handleNotificationUpdate = (data) => {
-      console.log('[App.js] Event: notificationsUpdated - Data:', data);
-      // Handle the notification data (e.g., update state, show UI, etc.)
-    };
+    // // Listen for notificationsUpdated event
+    // const handleNotificationUpdate = (data) => {
+    //   console.log('[App.js] Event: notificationsUpdated - Data:', data);
+    //   // Handle the notification data (e.g., update state, show UI, etc.)
+    // };
 
-    eventEmitter.on('notificationsUpdated', handleNotificationUpdate);
+    // eventEmitter.on('notificationsUpdated', handleNotificationUpdate);
 
-    // Cleanup the listener when the component unmounts
-    return () => {
-      eventEmitter.off('notificationsUpdated', handleNotificationUpdate);
-      console.log('[App.js] Removed notificationsUpdated listener.');
-    };
+    // // Cleanup the listener when the component unmounts
+    // return () => {
+    //   eventEmitter.off('notificationsUpdated', handleNotificationUpdate);
+    //   console.log('[App.js] Removed notificationsUpdated listener.');
+    // };
   }, []);
 
   useEffect(() => {
-    const handleNavigateToNotifications = (data) => {
-      navigationRef.current?.navigate('Notifications', { notificationId: data.notificationId });
-    };
+	const handleNavigateToNotifications = (data) => {
+		navigationRef.current?.navigate('Notifications', { 
+		notificationId: data.notificationId, 
+		isPopup: data.isPopup // Pass isPopup to Notifications screen
+		});
+	};
 
-    eventEmitter.on('navigateToNotifications', handleNavigateToNotifications);
+	eventEmitter.on('navigateToNotifications', handleNavigateToNotifications);
 
-    return () => {
-      eventEmitter.off('navigateToNotifications', handleNavigateToNotifications);
-    };
-  }, []);
+	return () => {
+		eventEmitter.off('navigateToNotifications', handleNavigateToNotifications);
+	};
+	}, []);
 
   return (
     <NavigationContainer ref={navigationRef}>

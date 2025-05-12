@@ -6,6 +6,8 @@ import SystemSetting from 'react-native-system-setting';
 import SoundQueueManager from './SoundQueueManager';
 import { Platform } from 'react-native';
 
+// TODO: Check on tokenRefresh
+
 export const initializeFCM = async () => {
   console.log('[FCMService] Initializing FCM...');
 
@@ -74,131 +76,212 @@ console.log('[FCMService] Attempting to get FCM token...');
 
 };
 
-export const processReceivedMessage = async (remoteMessage) => {
-  // Your logic for processing the message
-  console.log('[FCMService] Processing message:', remoteMessage);
+export const processReceivedMessage = async (remoteMessage) => 
+{
+	// Your logic for processing the message
+  	console.log('[FCMService] Processing message:', remoteMessage);
 
-  // TODO: Need to see if data is empty or not. Only process data notifications.
-  if (remoteMessage.data) {
-	console.log('[FCMService] Message data:', remoteMessage.data);
-
-	// Emit the event with the notification data
-    eventEmitter.emit('notificationsUpdated', remoteMessage.data);
-
-	const channelDesc = remoteMessage.data.channel_desc || 'Default Channel';
-	const channelId = remoteMessage.data.channel_id || '0';
-	const channelName = remoteMessage.data.channel_name || 'Default Channel Name';
-	const created = remoteMessage.data.created || '0';
-	const expires = remoteMessage.data.expires || '0';
-	const logId = remoteMessage.data.log_id || '0';
-	const message = remoteMessage.data.message || 'No message';
-	const msSrc = remoteMessage.data.msg_src || '0';
-	const msgUrl = remoteMessage.data.msg_url || '';
-	const title = remoteMessage.data.title || 'No title';
-	const type = remoteMessage.data.type || '0';
-
-	// Add logid to datapool
-	appStateManager.set('rptLogId', channelId);
-
-	// Check what internal sound file to use and assign to {soundfile}
-	let soundFileName = 'sf1.mp3';
-	if (type === '2') {
-	  soundFileName = 'sf2.mp3';
-	} else if (type === '3') {
-	  soundFileName = 'sf3.mp3';
-	}
-
-	appStateManager.set('notiPopup', "0");
-
-	// Check if the channel exists : channelId
-	try 
+  	// TODO: Need to see if data is empty or not. Only process data notifications.
+  	if (remoteMessage.data) 
 	{
-		// Get the database connection
-		const db = await getDBConnection();
-		console.log('[FCMService] Database connection:', db);
+		console.log('[FCMService] Message data:', remoteMessage.data);
 
-		// Check if the channel already exists
-		const channelExists = await checkChannelExists(db, channelId);
+		// Emit the event with the notification data
+		eventEmitter.emit('notificationsUpdated', remoteMessage.data);
 
-		if (channelExists) 
+		const channelDesc = remoteMessage.data.channel_desc || 'Default Channel';
+		const channelId = remoteMessage.data.channel_id || '0';
+		const channelName = remoteMessage.data.channel_name || 'Default Channel Name';
+		const created = remoteMessage.data.created || '0';
+		const expires = remoteMessage.data.expires || '0';
+		const logId = remoteMessage.data.log_id || '0';
+		const message = remoteMessage.data.message || 'No message';
+		const msgSrc = remoteMessage.data.msg_src || '0';
+		const msgUrl = remoteMessage.data.msg_url || '';
+		const title = remoteMessage.data.title || 'No title';
+		const type = remoteMessage.data.type || '0';
+
+		// Add logid to datapool
+		appStateManager.set('rptLogId', channelId);
+
+		// Check what internal sound file to use and assign to {soundfile}
+		let soundFileName = 'sf1.mp3';
+		if (type === '2') {
+		soundFileName = 'sf2.mp3';
+		} else if (type === '3') {
+		soundFileName = 'sf3.mp3';
+		}
+
+		appStateManager.set('notiPopup', "0");
+
+		// Check if the channel exists : channelId
+		try 
 		{
-			// Get the channel info from database
-			const channelInfo = await getChannel(db, channelId);
-			
-			if (channelInfo) {
-				const { status, description, name, channel_id, app_id } = channelInfo;
+			// Get the database connection
+			const db = await getDBConnection();
+			console.log('[FCMService] Database connection:', db);
 
-				console.log('[FCMService] Channel Info:');
-				console.log('Status:', status);
-				console.log('Description:', description);
-				console.log('Name:', name);
-				console.log('Channel ID:', channel_id);
-				console.log('App ID:', app_id);
+			// Check if the channel already exists
+			const channelExists = await checkChannelExists(db, channelId);
 
-				// Add channel info to AppStateManager or process it further
-				appStateManager.set('channelAppId', app_id);
-				appStateManager.set('channelId', channel_id);
-				appStateManager.set('channelName', name);
-				appStateManager.set('channelDescription', description);
-				appStateManager.set('channelStatus', status);
+			if (channelExists) 
+			{
+				// Get the channel info from database
+				const channelInfo = await getChannel(db, channelId);
+				
+				if (channelInfo) 
+				{
+					const { status, description, name, channel_id, app_id } = channelInfo;
+
+					console.log('[FCMService] Channel Info:');
+					console.log('Status:', status);
+					console.log('Description:', description);
+					console.log('Name:', name);
+					console.log('Channel ID:', channel_id);
+					console.log('App ID:', app_id);
+
+					// Add channel info to AppStateManager or process it further
+					appStateManager.set('channelAppId', app_id);
+					appStateManager.set('channelId', channel_id);
+					appStateManager.set('channelName', name);
+					appStateManager.set('channelDescription', description);
+					appStateManager.set('channelStatus', status);
+
+					// const getChannelStatus = appStateManager.get('channelStatus');
+
+					if (status === '0' || appStateManager.get('muteMode') === true)
+					{
+						console.log('[FCMService] Channel is disabled. Not showing notification.');
+						return;
+					}
+
+					appStateManager.set('title', title);
+					appStateManager.set('message', message);
+
+					console.log('Data:', channelDesc, channelId, channelName, created, expires, logId, message, msgSrc, msgUrl, title, type);
+
+					const noti = {
+						sysChannelId: "0",
+						sysNotiId: "0",
+						soundFile: soundFileName,
+						msgType: "0",
+						title: title,
+						message: message,
+						msgSrc: msgSrc,
+						msgUrl: msgUrl,
+						created: created,
+						expires: expires,
+					};
+
+					handleNotification(noti);
+
+				} 
+				else 
+				{
+					console.log(`[FCMService] No channel info found for channelId: ${channelId}`);
+				}
 			} 
 			else 
 			{
-				console.log(`[FCMService] No channel info found for channelId: ${channelId}`);
+				// TODO: Ask user to accept/decline and add etc
+				// Process if channel does not exist:
+				// - Add channel to db and get channel id - sysChannelid
+				// - Add incoming noti to db and get notiid - sysNotiId
+				// - Create a dummy new channel detected noti and send that yo handleNotification
+				// - Noti should play by talking to the emmiter and showing the noti
+				// - Where in Main.js we detect the noti in order to show it we check if the popup is primed
+				// -  Do a if to show on or the other
+				// - If user selects decline then set status to 0
+				// - If user selects accept the set channel_status to 1 and use the sysNotiId to fetch the origonal incoming message - load and play the sound
+				console.log(`[FCMService] Channel "${channelId}" does not exist. Adding to database.`);
+
+				// Get db connection
+				const db = await getDBConnection();
+
+				const sysChannelId = await addChannel(db, channelId, channelName, channelDesc, 0);
+				console.log(`[FCMService] Channel "${channelId}" added to database with ID: ${sysChannelId}`);
+
+				appStateManager.set('channelAppId', sysChannelId);
+				appStateManager.set('channelId', channelId);
+				appStateManager.set('channelName', channelName);
+				appStateManager.set('channelDescription', channelDesc);
+				appStateManager.set('channelStatus', 0);
+
+				// Add a notification for real incoming message
+				// Convert created and expires to integers
+				const createdInt = parseInt(created, 10);
+				const expiresInt = parseInt(expires, 10);
+
+				const newNotification = {
+					sys_channel_id: 0,
+					sys_noti_id: 0,
+					title: title,
+					message: message,
+					msg_type: type,
+					msg_src: msgSrc,
+					msg_url: msgUrl,
+					soundfile: soundFileName,
+					created: createdInt,
+					expires: expiresInt,
+				};
+
+				const sysNotiId = await insertNotification(db, newNotification);	
+				console.log('[FCMService] New notification added to database:', newNotification);
+
+				// Build fake notification
+				const sysSoundFile = "sf1.mp3";
+				const sysType = "1";
+				const sysTitle = "New Channel Detected";
+				const sysMessage = channelName + " would like to send you notifications.\n\nPlease select ACCEPT if you wish to receive notifications from this channel or DECLINE if you do not wish to receive notifications from this channel.\n\nYou can change this setting on the CHANNELS page.";
+				const sysMsgSrc = "0";
+				const sysMsgUrl = "";
+				const sysCreated = createdInt;
+				const sysExpires = expiresInt;
+
+				// Do handleNotification with fake noti
+
+
+				// Set notiPopup to show
+				appStateManager.set('notiPopup', "1");
+				appStateManager.set('popupChannelId', sysChannelId);
+				appStateManager.set('popupNotiId', sysNotiId);
+				appStateManager.set('popupChannelName', channelName);
+
+				const noti = {
+						sysChannelId: sysChannelId,
+						sysNotiId: sysNotiId,
+						soundFile: sysSoundFile,
+						msgType: sysType,
+						title: sysTitle,
+						message: sysMessage,
+						msgSrc: sysMsgSrc,
+						msgUrl: sysMsgUrl,
+						created: sysCreated,
+						expires: sysExpires,
+					};
+
+				handleNotification(noti);
+
+
+				console.log(`[FCMService] Channel "${channelId}" added successfully.`);
 			}
 		} 
-		else 
+		catch (error) 
 		{
-			// TODO: Ask user to accept/decline and add etc
-			console.log(`[FCMService] Channel "${channelId}" does not exist. Adding to database.`);
-			await addChannel(db, channelId, channelName, channelDesc, 0);
-			console.log(`[FCMService] Channel "${channelId}" added successfully.`);
+			console.error('[FCMService] Error processing received message:', error);
 		}
-
-		const getChannelStatus = appStateManager.get('channelStatus');
-
-		if (getChannelStatus === '0' || appStateManager.get('muteMode') === true)
-		{
-			console.log('[FCMService] Channel is disabled. Not showing notification.');
-			return;
-		} 
-		
-		appStateManager.set('title', title);
-		appStateManager.set('message', message);
-
-		console.log('Data:', channelDesc, channelId, channelName, created, expires, logId, message, msSrc, msgUrl, title, type);
-
-		const noti = {
-			sysChannelId: "0",
-			sysNotiId: "0",
-			soundFile: soundFileName,
-			msgType: type,
-			title: title,
-			message: message,
-			msSrc: msSrc,
-			msgUrl: msgUrl,
-			created: created,
-			expires: expires,
-		};
-
-		handleNotification(noti);
 	} 
-	catch (error) 
+	else 
 	{
-		console.error('[FCMService] Error processing received message:', error);
+		console.log('[FCMService] No data in message');
+		return;
 	}
-  } 
-  else 
-  {
-	console.log('[FCMService] No data in message');
-	return;
-  }
 };
 
 const handleNotification = async (noti) => 
 {
 	// Destruct the notification object
-	const { sysChannelId, sysNotiId, soundFile, msgType, title, message, msSrc, msgUrl, created, expires } = noti;
+	const { sysChannelId, sysNotiId, soundFile, msgType, title, message, msgSrc, msgUrl, created, expires } = noti;
 
 	// Convert created and expires to integers
 	const createdInt = parseInt(created, 10);
@@ -211,7 +294,7 @@ const handleNotification = async (noti) =>
 		title: title,
 		message: message,
 		msg_type: msgType,
-		msg_src: msSrc,
+		msg_src: msgSrc,
 		msg_url: msgUrl,
 		soundfile: soundFile,
 		created: createdInt,
@@ -240,21 +323,37 @@ const handleNotification = async (noti) =>
 		// });
 		eventEmitter.emit('navigateToNotifications', {
 		notificationId: notificationId,
+		isPopup: true,
 		});
 
 
 		// Set the device volume to 100%
-		// QQQ Testing const maxVolume = await SystemSetting.getVolume('music');
-		// QQQ Testing SystemSetting.setVolume(1.0, { type: 'music', showUI: true }); // Set volume to 100% and show UI
+		// TODO : Put the volume back to full
+		// qqqq const maxVolume = await SystemSetting.getVolume('music');
+		// qqqq SystemSetting.setVolume(1.0, { type: 'music', showUI: true }); // Set volume to 100% and show UI
 		console.log('Volume set to maximum.');
 
-		console.log('[FCMService] Playing internal sound:', msgUrl);
-		try {
-		SoundQueueManager.addToQueue('1', msgUrl, ''); // External sound
-		} catch (error) {
-			console.error('Error playing external sound:', error);
+		console.log('[FCMService] MsgSrc:', msgSrc);
+		if (msgSrc == '0') 
+		{
+			// Play internal sound
+			console.log('[FCMService] Playing internal sound:', soundFile);
+			try {
+				SoundQueueManager.addToQueue('0', '', soundFile);
+			} catch (error) {
+				console.error('Error playing internal sound:', error);
+			}
 		}
-
+		else 
+		{
+			// Play external sound
+			console.log('[FCMService] Playing external sound:', msgUrl);
+			try {
+				SoundQueueManager.addToQueue('1', msgUrl, '');
+			} catch (error) {
+				console.error('Error playing external sound:', error);
+			}
+		}
 	}
 	
 };

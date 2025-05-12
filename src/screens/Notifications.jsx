@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDBConnection, fetchActiveNotifications, setNotificationAsRead, getNotificationById } from '../services/Database';
+import { getDBConnection, fetchActiveNotifications, setNotificationAsRead, getNotificationById, updateChannelStatus } from '../services/Database';
 import SoundQueueManager from '../services/SoundQueueManager';
 import { SafeAreaView, FlatList, StyleSheet, View, Text, Pressable } from 'react-native';
 import TopNav from '../components/TopNav';
@@ -8,10 +8,12 @@ import NotiRead from '../assets/images/NotiRead';
 import NotiUnread from '../assets/images/NotiUnread';
 import NotiKeep from '../assets/images/NotiKeep';
 import NotiViewModel from '../components/NotiViewModal';
+import NotiPopupModal from '../components/NotiPopupModal';
 
 const Notifications = ({route}) => 
 {
 	// const { notificationId } = route.params;
+	console.log('[Notifications.jsx] Route params:', route.params);
 	// console.log('[Notifications.jsx] Notification ID:', notificationId);
 
 	const [notifications, setNotifications] = useState([]);
@@ -19,7 +21,9 @@ const Notifications = ({route}) =>
   	const [modalConfig, setModalConfig] = useState({ title: '', description: '', onConfirm: () => {} });
 	const [selectedNotification, setSelectedNotification] = useState(null);
 	const [currentNotificationId, setCurrentNotificationId] = useState(route.params?.notificationId || null);
+	const [isPopup, setIsPopup] = useState(route.params?.isPopup || null);
 	const [modalViewVisible, setModalViewVisible] = useState(false);
+	const [modalPopupVisible, setModalPopupVisible] = useState(false);
 
 	useEffect(() => 
 	{
@@ -37,7 +41,14 @@ const Notifications = ({route}) =>
 					if (notification) {
 						console.log('[Notifications.jsx] Fetched Notification:', notification);
 						setSelectedNotification(notification);
+						if (isPopup) 
+						{
+							setModalPopupVisible(true); // Show the popup modal
+						} 
+						else 
+						{
 						setModalViewVisible(true); // Show the modal with the notification details
+						}
 					}
 				}
 			} catch (error) {
@@ -46,12 +57,36 @@ const Notifications = ({route}) =>
 		};
 
 		fetchNotifications();
-	}, [currentNotificationId]);
+	}, [currentNotificationId, isPopup]);
 
 	const openModal = (title, description, onConfirm) => {
     setModalConfig({ title, description, onConfirm });
     setModalVisible(true);
   };
+
+  useEffect(() => {
+  if (modalViewVisible && selectedNotification) {
+    const { msg_src, msg_url, soundfile } = selectedNotification;
+
+    if (msg_src === '0') {
+      // Play internal sound
+      try {
+        SoundQueueManager.addToQueue('0', '', soundfile);
+      } catch (error) {
+        console.error('Error playing internal sound:', error);
+      }
+    } else if (msg_src !== '0' && msg_url) {
+      // Play external sound
+      try {
+        SoundQueueManager.addToQueue('1', msg_url, '');
+      } catch (error) {
+        console.error('Error playing external sound:', error);
+      }
+    } else {
+      console.log('Invalid msgSrc or msgUrl.');
+    }
+  }
+}, [modalViewVisible, selectedNotification]); // Trigger when modalViewVisible or selectedNotification changes
 
 	const handleView = async (id) => 
 	{
@@ -205,6 +240,46 @@ const Notifications = ({route}) =>
 	);
 	};
 
+	const handleAccept = async (notification) => {
+		console.log('Accepting notification:', notification);
+		const sysChannelId = notification.sys_channel_id;
+		const sysNotiId = notification.sys_noti_id;
+
+		try {
+			const db = await getDBConnection();
+			await updateChannelStatus(db, sysChannelId, "1");
+			console.log('Channel status updated successfully.');
+
+			// Clear the popup modal and selected notification before showing the new notification
+			setModalPopupVisible(false);
+			setSelectedNotification(null);
+
+			// Show the notification for sysNotiId
+			setIsPopup(false); // Set to false to show the view modal
+			handleView(sysNotiId); // Use the existing handleView function to show the notification
+		} catch (error) {
+			console.error('Error updating channel status:', error);
+		}
+	};
+
+	const handelDecline = async (notification) => {
+		console.log('Declining notification:', notification);
+		const sysChannelId = notification.sys_channel_id;
+
+		try 
+		{	
+			const db = await getDBConnection();
+			await updateChannelStatus(db, sysChannelId, "0");
+			console.log('Channel status updated successfully.');
+		} 
+		catch (error) 
+		{
+			console.error('Error updating channel status:', error);
+		}
+
+		setModalPopupVisible(false);
+	}
+
 	// Render each notification item
 	const renderNotification = ({ item }) => {
 		const createdDate = new Date(item.created * 1000).toLocaleString(); // Convert timestamp to readable date
@@ -262,6 +337,16 @@ const Notifications = ({route}) =>
 			onConfirm={() => setModalViewVisible(false)}
 			/>
       	)}
+		{/* visible, onClose, channelName, onAccept, onDecline */}
+		{selectedNotification && (
+			<NotiPopupModal
+			visible={modalPopupVisible}
+			onClose={() => setModalPopupVisible(false)}
+			channelName={selectedNotification.message}
+			onAccept={() => handleAccept(selectedNotification)}
+			onDecline={() => handelDecline(selectedNotification)}	
+			/>
+		)}
 		</SafeAreaView>
   	)
 };

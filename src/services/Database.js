@@ -189,6 +189,24 @@ export const getAllChannels = async (db) => {
 		throw error;
 	}
 };
+// Update channel status
+export const updateChannelStatus = async (db, id, channel_status) => {
+	const query = `
+		UPDATE CHANNELS
+		SET channel_status = ?
+		WHERE id = ?;
+	`;
+	try {
+		await db.executeSql(query, [channel_status, id]);
+		console.log(`[Database.js] Channel ${id} status updated to ${channel_status}.`);
+	} catch (error) {
+		console.error('[Database.js] Error updating channel status:', error);
+		throw error;
+	}
+};
+
+
+
 // --- PROFILE Table Functions ---
 
 /**
