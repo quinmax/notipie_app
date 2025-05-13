@@ -1,4 +1,4 @@
-import { getMessaging, onMessage, onBackgroundMessage, getToken } from '@react-native-firebase/messaging';
+import { getMessaging, onMessage, onBackgroundMessage, getToken, AuthorizationStatus } from '@react-native-firebase/messaging';
 import appStateManager from './AppStateManager';
 import { getDBConnection, checkChannelExists, getChannel, addChannel, insertNotification } from './Database';
 import eventEmitter from './EventEmitter';
@@ -8,72 +8,81 @@ import { Platform } from 'react-native';
 
 // TODO: Check on tokenRefresh
 
-export const initializeFCM = async () => {
+export const initializeFCM = async () => 
+{
   console.log('[FCMService] Initializing FCM...');
 
-  try {
-    const messaging = getMessaging();
-    console.log('[FCMService] Messaging instance obtained.');
+  	try 
+	{
+		const messaging = getMessaging();
+		console.log('[FCMService] Messaging instance obtained.');
 
-    // Set mutemode to off
-	if (appStateManager.get('muteMode') === undefined) {
-		appStateManager.set('muteMode', false);
-		console.log('[FCMService] muteMode was not set. Defaulting to false.');
+		// Set mutemode to off
+		if (appStateManager.get('muteMode') === undefined) {
+			appStateManager.set('muteMode', false);
+			console.log('[FCMService] muteMode was not set. Defaulting to false.');
+		}
+		console.log('[FCMService] Mutemode set to 0.');
+
+		// Request permissions for iOS
+		if (Platform.OS === 'ios') 
+		{
+			console.log('[FCMService] Requesting iOS permissions...');
+			const authStatus = await messaging.requestPermission();
+			const enabled =
+				authStatus === AuthorizationStatus.AUTHORIZED ||
+				authStatus === AuthorizationStatus.PROVISIONAL;
+			if (enabled) 
+			{
+				console.log('[FCMService] iOS Authorization status:', authStatus);
+			} 
+			else 
+			{
+				console.log('[FCMService] iOS permission not granted. Status:', authStatus);
+			}
+		}
+
+		// Request permissions for Android 13+ (API 33+)
+		if (Platform.OS === 'android' && Platform.Version >= 33) 
+		{
+			const authStatus = await messaging.requestPermission();
+			const enabled =
+			authStatus === AuthorizationStatus.AUTHORIZED ||
+			authStatus === AuthorizationStatus.PROVISIONAL;
+
+			if (enabled) 
+			{
+				console.log('[FCMService] Android notification permission granted:', authStatus);
+			} 
+			else 
+			{
+				console.log('[FCMService] Android notification permission not granted. Status:', authStatus);
+			}
+		}
+
+		messaging.onTokenRefresh(token => 
+		{
+			console.log('[FCMService] FCM Token refreshed:', token);
+			appStateManager.set('fcmToken', token);
+			// Optionally, send the new token to your backend server here
+		});
+
+		console.log('[FCMService] Setting up onMessage handler...');
+		onMessage(messaging, async (remoteMessage) => 
+		{
+			console.log('[FCMService] Foreground Message Received:', remoteMessage);
+			await processReceivedMessage(remoteMessage);
+		});
+    	console.log('[FCMService] onMessage handler set up.');
+
+		console.log('[FCMService] Attempting to get FCM token...');
+		const token = await getToken(messaging);
+		console.log('[FCMService] FCM Token:', token); // This is the line you're interested in
+		appStateManager.set('fcmToken', token);
+		console.log('[FCMService] FCM token stored in AppStateManager.');
+	} catch (error) {
+		console.error('[FCMService] Error during FCM initialization:', error);
 	}
-	console.log('[FCMService] Mutemode set to 0.');
-
- // Request permissions for iOS
-    if (Platform.OS === 'ios') {
-      console.log('[FCMService] Requesting iOS permissions...');
-      const authStatus = await messaging.requestPermission();
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-      if (enabled) {
-        console.log('[FCMService] iOS Authorization status:', authStatus);
-      } else {
-        console.log('[FCMService] iOS permission not granted. Status:', authStatus);
-      }
-    }
-
-  // Handle foreground messages
-//   onMessage(messaging, async (remoteMessage) => {
-//     console.log('[FCMService] Foreground Message Received:', remoteMessage);
-//     await processReceivedMessage(remoteMessage);
-//   });
-	console.log('[FCMService] Setting up onMessage handler...');
-    onMessage(messaging, async (remoteMessage) => {
-      console.log('[FCMService] Foreground Message Received:', remoteMessage);
-      await processReceivedMessage(remoteMessage);
-    });
-    console.log('[FCMService] onMessage handler set up.');
-
-  // Handle background messages
-//   onBackgroundMessage(messaging, async (remoteMessage) => {
-//     console.log('[FCMService] Background Message Received:', remoteMessage);
-//     await processReceivedMessage(remoteMessage);
-//   });
-	// console.log('[FCMService] Setting up onBackgroundMessage handler...');
-    // onBackgroundMessage(messaging, async (remoteMessage) => {
-    //   console.log('[FCMService] Background Message Received:', remoteMessage);
-    //   await processReceivedMessage(remoteMessage);
-    // });
-    // console.log('[FCMService] onBackgroundMessage handler set up.');
-
-  // Get the FCM token
-//   const token = await getToken(messaging);
-//   console.log('[FCMService] FCM Token:', token);
-//   appStateManager.set('fcmToken', token);
-console.log('[FCMService] Attempting to get FCM token...');
-    const token = await getToken(messaging);
-    console.log('[FCMService] FCM Token:', token); // This is the line you're interested in
-    appStateManager.set('fcmToken', token);
-    console.log('[FCMService] FCM token stored in AppStateManager.');
-  } catch (error) {
-    console.error('[FCMService] Error during FCM initialization:', error);
-  }
-
-
 };
 
 export const processReceivedMessage = async (remoteMessage) => 
@@ -171,6 +180,7 @@ export const processReceivedMessage = async (remoteMessage) =>
 						msgUrl: msgUrl,
 						created: created,
 						expires: expires,
+						isPopup: false,
 					};
 
 					handleNotification(noti);
@@ -258,6 +268,7 @@ export const processReceivedMessage = async (remoteMessage) =>
 						msgUrl: sysMsgUrl,
 						created: sysCreated,
 						expires: sysExpires,
+						isPopup: true,
 					};
 
 				handleNotification(noti);
@@ -281,7 +292,7 @@ export const processReceivedMessage = async (remoteMessage) =>
 const handleNotification = async (noti) => 
 {
 	// Destruct the notification object
-	const { sysChannelId, sysNotiId, soundFile, msgType, title, message, msgSrc, msgUrl, created, expires } = noti;
+	const { sysChannelId, sysNotiId, soundFile, msgType, title, message, msgSrc, msgUrl, created, expires, isPopup } = noti;
 
 	// Convert created and expires to integers
 	const createdInt = parseInt(created, 10);
@@ -323,7 +334,7 @@ const handleNotification = async (noti) =>
 		// });
 		eventEmitter.emit('navigateToNotifications', {
 		notificationId: notificationId,
-		isPopup: true,
+		isPopup: isPopup,
 		});
 
 

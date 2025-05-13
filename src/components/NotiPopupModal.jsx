@@ -18,7 +18,7 @@ const NotiPopupModal = ({ visible, onClose, channelName, onAccept, onDecline }) 
               <Text style={styles.buttonText}>Accept</Text>
             </Pressable>
             <Pressable style={[styles.button, styles.declineButton]} onPress={onDecline}>
-              <Text style={styles.buttonText}>Decline</Text>
+              <Text style={styles.buttonText}>Deny</Text>
             </Pressable>
           </View>
         </View>

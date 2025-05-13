@@ -24,6 +24,8 @@ const Notifications = ({route}) =>
 	const [isPopup, setIsPopup] = useState(route.params?.isPopup || null);
 	const [modalViewVisible, setModalViewVisible] = useState(false);
 	const [modalPopupVisible, setModalPopupVisible] = useState(false);
+	const [acceptNotification, setAcceptNotification] = useState(null);
+	const [modalAcceptNoti, setModalAcceptNoti] = useState(false);
 
 	useEffect(() => 
 	{
@@ -47,7 +49,7 @@ const Notifications = ({route}) =>
 						} 
 						else 
 						{
-						setModalViewVisible(true); // Show the modal with the notification details
+							setModalViewVisible(true); // Show the modal with the notification details
 						}
 					}
 				}
@@ -57,36 +59,36 @@ const Notifications = ({route}) =>
 		};
 
 		fetchNotifications();
-	}, [currentNotificationId, isPopup]);
+	}, [currentNotificationId]);
 
 	const openModal = (title, description, onConfirm) => {
     setModalConfig({ title, description, onConfirm });
     setModalVisible(true);
   };
 
-  useEffect(() => {
-  if (modalViewVisible && selectedNotification) {
-    const { msg_src, msg_url, soundfile } = selectedNotification;
+//   useEffect(() => {
+//   if (modalViewVisible && selectedNotification) {
+//     const { msg_src, msg_url, soundfile } = selectedNotification;
 
-    if (msg_src === '0') {
-      // Play internal sound
-      try {
-        SoundQueueManager.addToQueue('0', '', soundfile);
-      } catch (error) {
-        console.error('Error playing internal sound:', error);
-      }
-    } else if (msg_src !== '0' && msg_url) {
-      // Play external sound
-      try {
-        SoundQueueManager.addToQueue('1', msg_url, '');
-      } catch (error) {
-        console.error('Error playing external sound:', error);
-      }
-    } else {
-      console.log('Invalid msgSrc or msgUrl.');
-    }
-  }
-}, [modalViewVisible, selectedNotification]); // Trigger when modalViewVisible or selectedNotification changes
+//     if (msg_src === '0') {
+//       // Play internal sound
+//       try {
+//         SoundQueueManager.addToQueue('0', '', soundfile);
+//       } catch (error) {
+//         console.error('Error playing internal sound:', error);
+//       }
+//     } else if (msg_src !== '0' && msg_url) {
+//       // Play external sound
+//       try {
+//         SoundQueueManager.addToQueue('1', msg_url, '');
+//       } catch (error) {
+//         console.error('Error playing external sound:', error);
+//       }
+//     } else {
+//       console.log('Invalid msgSrc or msgUrl.');
+//     }
+//   }
+// }, [modalViewVisible, selectedNotification]);
 
 	const handleView = async (id) => 
 	{
@@ -245,20 +247,25 @@ const Notifications = ({route}) =>
 		const sysChannelId = notification.sys_channel_id;
 		const sysNotiId = notification.sys_noti_id;
 
-		try {
-			const db = await getDBConnection();
-			await updateChannelStatus(db, sysChannelId, "1");
-			console.log('Channel status updated successfully.');
+		setModalPopupVisible(false);
 
-			// Clear the popup modal and selected notification before showing the new notification
-			setModalPopupVisible(false);
-			setSelectedNotification(null);
+		const db = await getDBConnection();
 
-			// Show the notification for sysNotiId
-			setIsPopup(false); // Set to false to show the view modal
-			handleView(sysNotiId); // Use the existing handleView function to show the notification
-		} catch (error) {
-			console.error('Error updating channel status:', error);
+		const acceptNotification = await getNotificationById(db, sysNotiId);
+
+		if (acceptNotification) 
+		{
+			console.log('[Notifications.jsx] Fetched ACCEPT Notification:', acceptNotification);
+			const msgUrl = acceptNotification.msg_url;
+			setAcceptNotification(acceptNotification);
+			setModalAcceptNoti(true); // Show the modal
+			
+			try 
+			{
+				SoundQueueManager.addToQueue('1', msgUrl, '');
+			} catch (error) {
+				console.error('Error playing external sound:', error);
+			}
 		}
 	};
 
@@ -346,6 +353,16 @@ const Notifications = ({route}) =>
 			onAccept={() => handleAccept(selectedNotification)}
 			onDecline={() => handelDecline(selectedNotification)}	
 			/>
+		)}
+		{acceptNotification && (
+		<NotiViewModel
+		visible={modalAcceptNoti}
+		onClose={() => setModalAcceptNoti(false)}
+		record={acceptNotification}
+		title={acceptNotification.title}
+		description={acceptNotification.message}
+		onConfirm={() => setModalAcceptNoti(false)}
+		/>
 		)}
 		</SafeAreaView>
   	)

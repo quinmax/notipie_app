@@ -1,61 +1,24 @@
 import React, { useEffect } from 'react';
-import { SafeAreaView, Text, View, Button } from 'react-native';
+import { SafeAreaView, ScrollView, View, Text } from 'react-native';
 import TopNav from '../components/TopNav';
-import SystemSetting from 'react-native-system-setting';
-import SoundQueueManager from '../services/SoundQueueManager';
-import SoundPlayer from 'react-native-sound-player';
 
 const About = () => 
 {
-	useEffect(() => {
-		// Set the volume to maximum when the component mounts
-		setMaxVolume();
-	}, []);
-
-	const setMaxVolume = async () => {
-		try {
-			const maxVolume = await SystemSetting.getVolume('music');
-			SystemSetting.setVolume(1.0, { type: 'music', showUI: true }); // Set volume to 100% and show UI
-			console.log('Volume set to maximum.');
-		} catch (error) {
-			console.error('Error setting volume:', error);
-		}
-	};
-
-	const playInternalSound = () => {
-	SoundQueueManager.addToQueue('0', '', 'sf1.mp3'); // Internal sound
-	};
-
-	const playExternalSound = () => {
-	SoundQueueManager.addToQueue('1', 'http://192.168.1.28/notipie_servers/public/audio/fb4f2fa0a494496072f6e4d8aace0e6b.mp3', ''); // External sound
-	};
-
-
-//   const playInternalSound = () => {
-//   try {
-//     SoundPlayer.playSoundFile('sf1', 'mp3'); // 'sf1' is the file name without extension
-//     console.log('Playing internal sound.');
-//   } catch (error) {
-//     console.error('Error playing internal sound:', error);
-//   }
-// };
-
-//   const playExternalSound = () => {
-//   try {
-//     SoundPlayer.playUrl("http://192.168.1.28/notipie_servers/public/audio/1468cf985cdd1290db3bc621aec517f9.mp3"); // 'sf1' is the file name without extension
-//     console.log('Playing internal sound.');
-//   } catch (error) {
-//     console.error('Error playing internal sound:', error);
-//   }
-// };
 
 	return (
 	<SafeAreaView style={{ flex: 1, backgroundColor: '#12191D' }}>
+	<ScrollView style={{ flex: 1, backgroundColor: '#12191D' }} contentContainerStyle={{ flexGrow: 1 }}>
 	<TopNav title="About" />
-		<View>
-		<Button title="Play Internal Sound" onPress={playInternalSound} />
-		<Button title="Play External Sound" onPress={playExternalSound} />
+		<View style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'flex-start', padding: 20 }}>
+			<Text style={{ color: '#fff', fontSize: 28, marginTop: 0 }}>How it works</Text>
+			<Text style={{ color: '#fff', fontSize: 15, lineHeight: 24, marginTop: 20 }}>{'\u2022'} Your profile is linked to your email address.</Text>
+			<Text style={{ color: '#fff', fontSize: 15, lineHeight: 24, marginTop: 10 }}>{'\u2022'} The first time you receive a notification from a channel, you'll be prompted to either <Text style={{ color: '#03A9F4' }} >ACCEPT</Text> or <Text style={{ color: '#03A9F4' }} >DENY</Text> it. If you tap <Text style={{ color: '#03A9F4' }} >ACCEPT</Text>, the current and future notifications from that channel will play. If you tap <Text style={{ color: '#03A9F4' }} >DENY</Text>, the current notification and all future notifications from that channel will be blocked.\n\nIf you change your mind, you can update your preferences anytime on the <Text style={{ color: '#03A9F4' }} >CHANNELS</Text> page.</Text>
+			<Text style={{ color: '#fff', fontSize: 28, marginTop: 24 }}>Your Privacy</Text>
+			<Text style={{ color: '#fff', fontSize: 15, lineHeight: 24, marginTop: 20 }}>{'\u2022'} Your email address is used exclusively for authentication and will never be shared or required for any other purpose.</Text>
+			<Text style={{ color: '#fff', fontSize: 28, marginTop: 24 }}>Tips</Text>
+			<Text style={{ color: '#fff', fontSize: 15, lineHeight: 24, marginTop: 20 }}>{'\u2022'} If you're entering a meeting or an event requiring "radio silence", activate <Text style={{ color: '#03A9F4' }} >MEETING MODE</Text> on the <Text style={{ color: '#03A9F4' }} >CHANNELS</Text> page to mute all channels. When you're ready to receive notifications again, simply tap the button to <Text style={{ color: '#03A9F4' }} >UNMUTE</Text> all your accepted channels.</Text>
 		</View>
+		</ScrollView>
 	</SafeAreaView>
 	)
 }
