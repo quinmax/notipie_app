@@ -60,3 +60,39 @@ Add your sound files to the Xcode project under the Resources folder.
 TODO 11052025
 1. When a noti arrives we need to show IT
 2. Ask to add channel etc
+
+
+
+The api url to update the fcm token on the server is http://192.168.1.28/notipie/api/refresh_token and the php function is:
+public function update_fcm_token($userId, $fcmToken)
+	{
+		if (!is_numeric($userId) || empty($fcmToken)) {
+			log_message('error', 'Invalid parameters for update_fcm_token.');
+			return false;
+		}
+
+		$data = [
+			'fcm_token' => $fcmToken,
+			'updated_at' => date('Y-m-d H:i:s') // Use DATETIME format if your column is DATETIME/TIMESTAMP
+		];
+
+		$this->db->where('id', (int)$userId);
+		$updated = $this->db->update('users', $data);
+
+		if (!$updated) {
+			log_message('error', sprintf(
+				'Failed to update fcm_token for user_id %d. DB Error: %s',
+				$userId,
+				json_encode($this->db->error()) // Get detailed error
+			));
+			return false;
+		}
+
+		return true; // Return true if the query executed without DB error
+	}
+
+	- need a function to get profile details
+	- need to prevent more than 1 record in profiles
+	- on getToken --  sendtoserver - check this happens once
+	- onTokenReferesh --  sendtoserver - check this happens once
+	

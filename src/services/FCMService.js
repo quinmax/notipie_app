@@ -1,12 +1,11 @@
 import { getMessaging, onMessage, onBackgroundMessage, getToken, AuthorizationStatus } from '@react-native-firebase/messaging';
 import appStateManager from './AppStateManager';
-import { getDBConnection, checkChannelExists, getChannel, addChannel, insertNotification } from './Database';
+import { getDBConnection, checkChannelExists, getChannel, addChannel, insertNotification, getProfile } from './Database';
 import eventEmitter from './EventEmitter';
 import SystemSetting from 'react-native-system-setting';
 import SoundQueueManager from './SoundQueueManager';
 import { Platform } from 'react-native';
-
-// TODO: Check on tokenRefresh
+import { API_BASE_URL } from '../config'; // Adjust the import path as needed
 
 export const initializeFCM = async () => 
 {
@@ -65,6 +64,7 @@ export const initializeFCM = async () =>
 			console.log('[FCMService] FCM Token refreshed:', token);
 			appStateManager.set('fcmToken', token);
 			// Optionally, send the new token to your backend server here
+			sendFcmTokenToServer(token);
 		});
 
 		console.log('[FCMService] Setting up onMessage handler...');
@@ -79,11 +79,65 @@ export const initializeFCM = async () =>
 		const token = await getToken(messaging);
 		console.log('[FCMService] FCM Token:', token); // This is the line you're interested in
 		appStateManager.set('fcmToken', token);
+		sendFcmTokenToServer(token);
+
 		console.log('[FCMService] FCM token stored in AppStateManager.');
 	} catch (error) {
 		console.error('[FCMService] Error during FCM initialization:', error);
 	}
 };
+
+const sendFcmTokenToServer = async (token) => {
+  try {
+    console.log('[FCMService] Sending FCM token to server:', token);
+
+    const profile = await fetchProfile();
+    const user_id = profile ? profile.contact_id : null;
+
+    if (!user_id || !token) {
+      console.warn('[FCMService] Missing user_id or token, not sending to server.');
+      return;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/refresh_token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: user_id,      // <-- match PHP expects user_id
+        fcm_token: token,      // <-- match PHP expects fcm_token
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[FCMService] Failed to update FCM token on server:', errorText);
+      return;
+    }
+
+    const result = await response.json();
+    console.log('[FCMService] FCM token update response:', result);
+  } catch (error) {
+    console.error('[FCMService] Error sending FCM token to server:', error);
+  }
+};
+
+async function fetchProfile() 
+{
+	const db = await getDBConnection();
+
+	const profile = await getProfile(db);
+	if (profile) 
+	{
+		return profile;
+	} 
+	else 
+	{
+		console.warn('[FCMService] No profile data found.');
+		return null;
+	}
+}
 
 export const processReceivedMessage = async (remoteMessage) => 
 {

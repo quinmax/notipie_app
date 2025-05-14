@@ -250,6 +250,26 @@ export const saveProfile = async (db, profile) => {
   }
 };
 
+export const updateProfile = async (db, profile) => {
+	  const query = `
+	UPDATE PROFILE
+	SET user_name = ?, email_address = ?, contact_token = ?
+	WHERE id = ?;
+  `;
+  try {
+	await db.executeSql(query, [
+	  profile.user_name,
+	  profile.email_address,
+	  profile.fcm_token,
+	  profile.profile_id,
+	]);
+	console.log(`[Database.js] Profile ${profile.id} updated successfully.`);
+  } catch (error) {
+	console.error('[Database.js] Error updating profile:', error);
+	throw error;
+  }
+};
+
 /**
  * Fetches the first profile from the PROFILE table.
  * @param {SQLite.SQLiteDatabase} db - The database connection instance.

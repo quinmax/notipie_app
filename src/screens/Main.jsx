@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import appStateManager from '../services/AppStateManager';
 import { updateFCMAppState } from '../services/FCMService';
-import { ActivityIndicator, SafeAreaView, ImageBackground, StyleSheet, Pressable, View, Alert } from 'react-native';
+import { ActivityIndicator, Linking, SafeAreaView, ImageBackground, StyleSheet, Pressable, View, Alert } from 'react-native';
 import backgroundImage from '../assets/images/home_bg.png';
 import { Text } from 'react-native-gesture-handler';
 import ButtonMain from '../components/ButtonMain';
@@ -129,10 +129,14 @@ const Main = (props) =>
 				<ButtonMain text="Channels" SvgIcon={IconMenuChannels} svgWidth={24} svgHeight={24} style={{ marginTop: 20, backgroundColor: '#03A9F4' }} textStyle={{ color: '#000', fontSize: 15 }} onPress={handleGotoChannels} />
 				<ButtonMain text="Setup" SvgIcon={IconMenuSetup} svgWidth={24} svgHeight={24} style={{ marginTop: 20, backgroundColor: '#03A9F4' }} textStyle={{ color: '#000', fontSize: 15 }} onPress={handleGotoSetup} />
 				<ButtonMain text="About" SvgIcon={IconMenuAbout} svgWidth={24} svgHeight={24} style={{ marginTop: 20, backgroundColor: '#03A9F4' }} textStyle={{ color: '#000', fontSize: 15 }} onPress={handleGotoAbout} />
-				<View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 15 }}>
-					<IconPrivacy />
-					<Text style={{ fontSize: 12, color: '#fff', marginLeft: 5 }}>Privacy Policy</Text>
-				</View>
+				
+				<Pressable onPress={() => Linking.openURL('https://www.example.com')} style={{ marginTop: 15 }}>
+					<View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+						<IconPrivacy />
+						<Text style={{ fontSize: 12, color: '#fff', marginLeft: 5 }}>Privacy Policy</Text>
+					</View>
+				</Pressable>
+				
 				<Pressable onPress={() => props.navigation.navigate('Channels')} style={{ marginTop: 5 }}>
 					<View style={{ flexDirection: 'column', justifyContent: 'center', alignItems: 'center', marginTop: 45 }}>
 						<Text style={{ color: '#fff' }}>Meeting Mode:</Text>

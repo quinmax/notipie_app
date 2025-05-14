@@ -1,6 +1,7 @@
 import React, { useState, useEffect} from 'react';
+import { API_BASE_URL } from '../config';
 import appStateManager from '../services/AppStateManager';
-import { getDBConnection, saveProfile, getProfile } from '../services/Database';
+import { getDBConnection, saveProfile, getProfile, updateProfile } from '../services/Database';
 import { Alert, SafeAreaView, Text, View } from 'react-native';
 import TopNav from '../components/TopNav';
 import ms from '../styles/MainStyles';
@@ -12,11 +13,12 @@ import IconSave	from '../assets/images/IconSave'; // Adjust path if needed
 const Setup = (props) => 
 {
 	const isRegistering = props.route?.params?.isRegistering ?? false;
+	const[profileId, setProfileId] = useState(null);
 	const [userName, setUserName] = useState('');
 	const [email, setEmail] = useState('');
 	// TODO: Fetch the actual FCM token asynchronously, e.g., using Firebase Cloud Messaging library
 	const [fcmToken, setFcmToken] = useState('');
-	const [btnName, setBtnName] = useState(isRegistering ? 'Register' : 'Save Changes');
+	const [btnName, setBtnName] = useState(isRegistering ? 'Register' : 'Update');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
@@ -32,6 +34,7 @@ const Setup = (props) =>
 					const db = await getDBConnection();
 					const profile = await getProfile(db);
 					if (profile) {
+						setProfileId(profile.id);
 						setUserName(profile.user_name || '');
 						setEmail(profile.email_address || '');
 						// Prefer token from AppStateManager if available, otherwise from DB, then fetch
@@ -74,7 +77,7 @@ const Setup = (props) =>
 		formData.append('device_os', 0); // Default value
 
 		try {
-			const response = await fetch('http://192.168.1.28/notipie/api/register', {
+			const response = await fetch(`${API_BASE_URL}/register`, {
 				method: 'POST',
 				body: formData,
 				// Headers might not be strictly necessary for FormData with fetch,
@@ -123,6 +126,73 @@ const Setup = (props) =>
 		}
 	};
 
+	const handleUpdate = async () => 
+	{
+		if (!email) {
+			Alert.alert('Validation Error', 'Email address is required.');
+			return;
+		}
+		if (!fcmToken || fcmToken === 'fetching...') {
+ 			Alert.alert('Error', 'FCM Token is not available yet. Please wait or restart the app.');
+ 			return;
+ 		}
+
+		setIsSubmitting(true);
+		const formData = new FormData();
+		formData.append('email_address', email);
+		formData.append('fcm_token', fcmToken);
+		formData.append('user_name', userName); // Send empty string if not provided
+		formData.append('device_os', 0); // Default value
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/register`, {
+				method: 'POST',
+				body: formData,
+				// Headers might not be strictly necessary for FormData with fetch,
+				// but uncomment if your server requires it.
+				headers: {
+				  'Content-Type': 'multipart/form-data',
+				},
+			});
+
+			const result = await response.json(); // Assuming the server responds with JSON
+			// const responseText = await response.text();
+			console.log('Raw API Response:', result);
+
+			if (result.status == "success") {
+				Alert.alert('Success', 'Update successful!');
+				// Optionally navigate away or update UI state
+				// e.g., props.navigation.navigate('Main');
+				try {
+					const db = await getDBConnection();
+					if (!db) {
+						throw new Error("Failed to get database connection for saving profile.");
+					}
+					const profileData = {
+						profile_id: profileId, // Assuming API returns user_id as contact_id
+						user_name: userName,
+						email_address: email,
+						fcm_token: fcmToken // As sent to the API
+					};
+					await updateProfile(db, profileData);
+					console.log('Profile saved updated to SQLite.');
+					// Alert.alert('Success', result.message || 'Update successful!');
+				} catch (dbError) {
+					console.error('SQLite saving error:', dbError);
+					Alert.alert('Database Error', 'Failed to save profile locally. Please try again.');
+				}
+
+			} else {
+				Alert.alert('Registration Failed', result.message || 'An error occurred on the server.');
+			}
+		} catch (error) {
+			console.error('Registration API error:', error);
+			Alert.alert('Network Error', 'Failed to connect to the server. Please check your connection and the IP address.');
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: '#12191D' }}>
 			<TopNav title="Setup" />
@@ -148,6 +218,7 @@ const Setup = (props) =>
 				<Text style={ [ms.cbase, ms.mt5 ]}>{fcmToken ? '...' + fcmToken.slice(-20) : ''}</Text>
 			</View>
 			<View style={{ paddingStart: 20, paddingEnd: 20 }}>
+			{isRegistering ? (
 				<ButtonMain
 					text={isSubmitting ? 'Registering...' : btnName}
 					SvgIcon={IconSave}
@@ -157,6 +228,17 @@ const Setup = (props) =>
 					onPress={handleButtonPress}
 					disabled={isSubmitting} // Disable button while submitting
 				/>
+			) : (
+				<ButtonMain
+					text={isSubmitting ? 'Registering...' : btnName}
+					SvgIcon={IconSave}
+					svgWidth={24} svgHeight={24}
+					style={{ marginTop: 20, backgroundColor: '#03A9F4', justifyContent: 'center' }}
+					textStyle={{ color: '#000', fontSize: 15 }}
+					onPress={handleUpdate}
+					disabled={isSubmitting} // Disable button while submitting
+				/>
+			)}
 			</View>
 
 		</SafeAreaView>
