@@ -394,8 +394,8 @@ const handleNotification = async (noti) =>
 
 		// Set the device volume to 100%
 		// TODO : Put the volume back to full
-		// qqqq const maxVolume = await SystemSetting.getVolume('music');
-		// qqqq SystemSetting.setVolume(1.0, { type: 'music', showUI: true }); // Set volume to 100% and show UI
+		const maxVolume = await SystemSetting.getVolume('music');
+		SystemSetting.setVolume(1.0, { type: 'music', showUI: true }); // Set volume to 100% and show UI
 		console.log('Volume set to maximum.');
 
 		console.log('[FCMService] MsgSrc:', msgSrc);

@@ -46,6 +46,7 @@ class SoundQueueManager {
       try {
         console.log(`Playing external sound from URL: ${msgUrl}`);
         SoundPlayer.playUrl(msgUrl);
+        // SoundPlayer.playUrl('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
         this.isPlaying = true;
 
         // Listen for the completion event

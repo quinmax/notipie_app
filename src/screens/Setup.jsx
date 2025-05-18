@@ -5,10 +5,11 @@ import { getDBConnection, saveProfile, getProfile, updateProfile } from '../serv
 import { Alert, SafeAreaView, Text, View } from 'react-native';
 import TopNav from '../components/TopNav';
 import ms from '../styles/MainStyles';
-import LabeledInput from '../components/LabeledInput'; // Adjust path if needed
+import LabeledInput from '../components/LabeledInput';
 import Label from '../components/Label';
-import ButtonMain from '../components/ButtonMain'; // Adjust path if needed
-import IconSave	from '../assets/images/IconSave'; // Adjust path if needed
+import ButtonMain from '../components/ButtonMain';
+import ButtonOutline from '../components/ButtonOutline';
+import IconSave	from '../assets/images/IconSave';
 
 const Setup = (props) => 
 {
@@ -145,6 +146,7 @@ const Setup = (props) =>
 		formData.append('device_os', 0); // Default value
 
 		try {
+			console.log("Reg API: ", `${API_BASE_URL}/register`);
 			const response = await fetch(`${API_BASE_URL}/register`, {
 				method: 'POST',
 				body: formData,
@@ -193,11 +195,15 @@ const Setup = (props) =>
 		}
 	};
 
+	const handleClose = () => {
+		props.navigation.goBack();
+	}
+
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: '#12191D' }}>
 			<TopNav title="Setup" />
 			<View style={ [ms.cardBlue, ms.mb5] } >
-				<Text style={[ ms.fs20, ms.cw, ms.mb5 ]} >Profile Details</Text>
+				<Text style={[ ms.fs20, ms.cw, ms.mb5 ]} >Profile Details aaa</Text>
 				<LabeledInput
 					description="Username (Optional)"
 					value={userName}
@@ -239,8 +245,15 @@ const Setup = (props) =>
 					disabled={isSubmitting} // Disable button while submitting
 				/>
 			)}
+			<ButtonOutline
+				text="Close"
+				svgWidth={24} svgHeight={24}
+				style={{ marginTop: 20, backgroundColor: '#12191D', justifyContent: 'center' }}
+				textStyle={{ color: '#FFF', fontSize: 15 }}
+				onPress={handleClose}
+				/>
 			</View>
-
+			
 		</SafeAreaView>
   	)
 }

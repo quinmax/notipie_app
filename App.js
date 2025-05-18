@@ -3,6 +3,25 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { NavigationContainer } from '@react-navigation/native';
 import { initializeFCM } from './src/services/FCMService'; // Import FCM initializer
 import eventEmitter from './src/services/EventEmitter';
+import { PermissionsAndroid, Platform } from 'react-native';
+
+async function requestNotificationPermission() {
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      {
+        title: 'Notification Permission',
+        message: 'This app needs notification permission to send you alerts.',
+        buttonPositive: 'OK',
+      }
+    );
+    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      console.log('Notification permission granted');
+    } else {
+      console.log('Notification permission denied');
+    }
+  }
+}
 
 const App = () => 
 {
@@ -10,30 +29,17 @@ const App = () =>
 	const isFCMInitialized = useRef(false);
 
 	useEffect(() => {
-    if (!isFCMInitialized.current) {
-      const appInitialization = async () => {
-        await initializeFCM();
-        console.log('[App.js] FCM Service Initialized.');
-      };
+  if (!isFCMInitialized.current) {
+    const appInitialization = async () => {
+      await requestNotificationPermission(); // Request permission first
+      await initializeFCM();                // Then initialize FCM
+      console.log('[App.js] FCM Service Initialized.');
+    };
 
-      appInitialization();
-      isFCMInitialized.current = true; // Mark FCM as initialized
-    }
-
-    // // Listen for notificationsUpdated event
-    // const handleNotificationUpdate = (data) => {
-    //   console.log('[App.js] Event: notificationsUpdated - Data:', data);
-    //   // Handle the notification data (e.g., update state, show UI, etc.)
-    // };
-
-    // eventEmitter.on('notificationsUpdated', handleNotificationUpdate);
-
-    // // Cleanup the listener when the component unmounts
-    // return () => {
-    //   eventEmitter.off('notificationsUpdated', handleNotificationUpdate);
-    //   console.log('[App.js] Removed notificationsUpdated listener.');
-    // };
-  }, []);
+    appInitialization();
+    isFCMInitialized.current = true; // Mark FCM as initialized
+  }
+}, []);
 
   useEffect(() => {
 	const handleNavigateToNotifications = (data) => {
