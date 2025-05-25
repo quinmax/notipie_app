@@ -135,3 +135,23 @@ public function update_fcm_token($userId, $fcmToken)
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+
+BUG LIST 19-05-2025
+- 1. If you close the app then you have to open it twice to open it.
+2. The allowing channel has a funny where I had to manually go and activate the channel to receive
+3. One thing we forgot in the Notification section on the phone, where you view the notifications, you cant see whom it was from
+4. Need to add battery permission
+5. Setup must first get fcm token before showing setup screen
+
+On iOS, push notifications are handled differently than on Android:
+
+iOS apps can always receive push notifications, even if the app is in the background, closed, or the device has not opened the app for days or weeks.
+Battery optimization settings are not needed for push notifications on iOS. Apple’s system (APNs) delivers notifications to the device, and the system displays them to the user regardless of your app’s background state.
+User must have notifications enabled for your app in iOS Settings. If the user disables notifications, your app will not receive them.
+Silent/background notifications (content-available: 1) may be throttled or delayed if your app is force-closed or not used for a long time, but standard push notifications (alerts, badges, sounds) are reliably delivered.
+Summary:
+
+On iOS, you do not need to request any battery optimization exemption for push notifications.
+As long as the user has not disabled notifications for your app, push notifications will be delivered at any time, even if the app is backgrounded or unused for days.
+Let me know if you need details about iOS notification permissions or background modes!

@@ -124,7 +124,7 @@ const Main = (props) =>
 		<ImageBackground source={backgroundImage} style={MainStyles.imageBackground}>
 			<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} >
 				<MainLogo />
-				<Text style={{ fontSize: 12, color: '#fff', marginTop: 10 }}>v 1.0.0</Text>
+				<Text style={{ fontSize: 12, color: '#fff', marginTop: 10 }}>v 1.0.1</Text>
 				<ButtonMain text="Notifications" SvgIcon={IconMenuNoti} svgWidth={24} svgHeight={24} style={{ marginTop: 20, backgroundColor: '#03A9F4' }} textStyle={{ color: '#000', fontSize: 15 }} onPress={handleGotoNotifications} />
 				<ButtonMain text="Channels" SvgIcon={IconMenuChannels} svgWidth={24} svgHeight={24} style={{ marginTop: 20, backgroundColor: '#03A9F4' }} textStyle={{ color: '#000', fontSize: 15 }} onPress={handleGotoChannels} />
 				<ButtonMain text="Setup" SvgIcon={IconMenuSetup} svgWidth={24} svgHeight={24} style={{ marginTop: 20, backgroundColor: '#03A9F4' }} textStyle={{ color: '#000', fontSize: 15 }} onPress={handleGotoSetup} />

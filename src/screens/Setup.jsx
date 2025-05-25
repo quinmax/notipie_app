@@ -22,39 +22,41 @@ const Setup = (props) =>
 	const [btnName, setBtnName] = useState(isRegistering ? 'Register' : 'Update');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	const [loading, setLoading] = useState(true);
+
 	useEffect(() => {
 		const retrieveFcmToken = () => {
 			const tokenFromManager = appStateManager.get('fcmToken');
-			setFcmToken(tokenFromManager || 'fetching...'); // Set to 'fetching...' or empty if not yet available
+			setFcmToken(tokenFromManager || 'fetching...');
 			console.log('[Setup.jsx] FCM Token from AppStateManager:', tokenFromManager);
+			return tokenFromManager;
 		};
-		
+
 		const loadProfileData = async () => {
+			let token;
 			if (!isRegistering) {
-				try {
-					const db = await getDBConnection();
-					const profile = await getProfile(db);
-					if (profile) {
-						setProfileId(profile.id);
-						setUserName(profile.user_name || '');
-						setEmail(profile.email_address || '');
-						// Prefer token from AppStateManager if available, otherwise from DB, then fetch
-						setFcmToken(appStateManager.get('fcmToken') || profile.contact_token || 'fetching...');
-					} else {
-						// If not registering but no profile found, maybe treat as registration?
-						// Or show an error/alert. For now, just log.
-						console.warn("Setup opened in edit mode, but no profile found in DB.");
-						retrieveFcmToken();
-					}
-				} catch (error) {
-					Alert.alert("Error", "Failed to load profile data.");
-					console.error("Error loading profile data:", error);
-					retrieveFcmToken();
+			try {
+				const db = await getDBConnection();
+				const profile = await getProfile(db);
+				if (profile) {
+				setProfileId(profile.id);
+				setUserName(profile.user_name || '');
+				setEmail(profile.email_address || '');
+				token = appStateManager.get('fcmToken') || profile.contact_token || 'fetching...';
+				setFcmToken(token);
+				} else {
+				console.warn("Setup opened in edit mode, but no profile found in DB.");
+				token = retrieveFcmToken();
 				}
-			} else {
-				// If registering, get the token from AppStateManager
-				retrieveFcmToken();
+			} catch (error) {
+				Alert.alert("Error", "Failed to load profile data.");
+				console.error("Error loading profile data:", error);
+				token = retrieveFcmToken();
 			}
+			} else {
+			token = retrieveFcmToken();
+			}
+			setLoading(false); // Only set loading to false after token/profile is ready
 		};
 
 		loadProfileData();
@@ -198,6 +200,14 @@ const Setup = (props) =>
 	const handleClose = () => {
 		props.navigation.goBack();
 	}
+
+	if (loading) {
+		return (
+			<SafeAreaView style={{ flex: 1, backgroundColor: '#12191D', justifyContent: 'center', alignItems: 'center' }}>
+			<Text style={{ color: '#FFF' }}>Loading...</Text>
+			</SafeAreaView>
+		);
+		}
 
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: '#12191D' }}>
